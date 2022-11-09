@@ -28,10 +28,12 @@ I have not looked into rafx too much, though two issues stick out:
 Rapax addresses these problems by making it very easy to access internal OpenGL state without meddling with too many internals. If Rapax doesn't have a feature you need (I guarantee this will almost never happen) it's easy to hack it in without touching any Rapax code.
 Using a foreign texture is as easy as:
 ```rs
-ctx.bind_texture(0, foreign_texture_name);```
+ctx.bind_texture(0, foreign_texture_name);
+```
 Similarly, using a foreign shader is as easy as:
 ```rs
-ctx.use_program(shader_name);```
+ctx.use_program(shader_name);
+```
 I'm sure you get the point by now. All of Rapax's context functions take in Rapax's managed primitives in addition to raw names/handles.
 
 In the case of extensions such as `GLX_EXT_texture_from_pixmap` it's as easy as:
