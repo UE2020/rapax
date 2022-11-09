@@ -6,7 +6,7 @@ The #1 best semi-safe OpenGL abstraction crate. Read more to see why.
 1. Most existing OpenGL abstraction crates lack important features. For example, `miniquad` and `notan` do not allow you to create a depth stencil buffer.
 2. Many OpenGL abstraction crates lack web support (mainly `glium`).
 3. Many OpenGL abstraction crates are unmaintained (`glium`, and one other one which I cannot remember the name of).
-5. Many OpenGL abstraction crates do not provide ways to import foreign textures. `notan` does have a way to add textures to the context, but this mechanism, doesn't allow for the use of extensions such as `GLX_EXT_texture_from_pixmap`.
+5. Many OpenGL abstraction crates do not provide ways to import foreign textures. `notan` does have a way to add textures to the context, but this mechanism doesn't allow for the use of extensions such as `GLX_EXT_texture_from_pixmap`.
 
 ## Why not `wgpu`?
 
