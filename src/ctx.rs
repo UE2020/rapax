@@ -1,6 +1,6 @@
 use super::*;
 
-use std::sync::Arc;
+use std::{sync::Arc, default};
 
 /// The primitive mode used when calling draw\* functions.
 #[derive(Debug, Clone, Copy)]
@@ -20,13 +20,34 @@ impl DrawMode {
     }
 }
 
+#[derive(Debug, Clone, PartialEq, Eq)]
+enum MaybeKnown<T: Default> {
+    Known(T),
+    Unknown
+}
+
+impl<T: Default> MaybeKnown<T> {
+    fn assume_known(&self) -> T {
+        match self {
+            Self::Known(v) => *v,
+            Self::Unknown => panic!("Tried to unwrap invalidated binding")
+        }
+    }
+}
+
+impl<T: Default> Default for MaybeKnown<T> {
+    fn default() -> Self {
+        Self::Known(T::default())
+    }
+}
+
 /// Context state
 #[derive(Debug, Default, Clone)]
 struct ContextState {
     // bound objects
-    bound_array_buffer: Option<NativeBuffer>,
-    bound_element_buffer: Option<NativeBuffer>,
-    bound_textures: [Option<NativeTexture>; 16],
+    bound_array_buffer: MaybeKnown<Option<NativeBuffer>>,
+    bound_element_buffer: MaybeKnown<Option<NativeBuffer>>,
+    bound_textures: [MaybeKnown<Option<NativeTexture>>; 16],
 
     // blend state
     blend_enabled: bool,
@@ -40,7 +61,7 @@ struct ContextState {
     color_write: bool,
 
     // currently used program
-    program: Option<NativeProgram>,
+    program: MaybeKnown<Option<NativeProgram>>,
 }
 
 impl ContextState {
@@ -87,30 +108,30 @@ impl ManagedContext {
     /// Install the passed program object as a part of the current rendering state.
     pub fn use_program(&mut self, program: impl ProgramSource) {
         let program = Some(program.native_program());
-        if self.last_flushed_state.program != program {
+        if self.last_flushed_state.program != MaybeKnown::Known(program) {
             unsafe { self.gl.use_program(program) };
-            self.current_state.program = program;
-            self.last_flushed_state.program = program;
+            self.current_state.program = MaybeKnown::Known(program);
+            self.last_flushed_state.program = MaybeKnown::Known(program);
         }
     }
 
     /// Bind a buffer object to the array buffer binding point, `GL_ARRAY_BUFFER`.
     pub fn bind_array_buffer(&mut self, buffer: impl BufferSource) {
         let buffer = Some(buffer.native_buffer());
-        if self.last_flushed_state.bound_array_buffer != buffer {
+        if self.last_flushed_state.bound_array_buffer != MaybeKnown::Known(buffer) {
             unsafe { self.gl.bind_buffer(ARRAY_BUFFER, buffer) };
-            self.current_state.bound_array_buffer = buffer;
-            self.last_flushed_state.bound_array_buffer = buffer;
+            self.current_state.bound_array_buffer = MaybeKnown::Known(buffer);
+            self.last_flushed_state.bound_array_buffer = MaybeKnown::Known(buffer);
         }
     }
 
     /// Bind a buffer object to the index buffer binding point, `GL_ELEMENT_ARRAY_BUFFER`.
     pub fn bind_index_buffer(&mut self, buffer: impl BufferSource) {
         let buffer = Some(buffer.native_buffer());
-        if self.last_flushed_state.bound_element_buffer != buffer {
+        if self.last_flushed_state.bound_element_buffer != MaybeKnown::Known(buffer) {
             unsafe { self.gl.bind_buffer(ELEMENT_ARRAY_BUFFER, buffer) };
-            self.current_state.bound_element_buffer = buffer;
-            self.last_flushed_state.bound_element_buffer = buffer;
+            self.current_state.bound_element_buffer = MaybeKnown::Known(buffer);
+            self.last_flushed_state.bound_element_buffer = MaybeKnown::Known(buffer);
         }
     }
 
@@ -129,10 +150,10 @@ impl ManagedContext {
             ),
         };
         let buffer = Some(buffer.native_buffer());
-        if *last_flushed != buffer {
+        if *last_flushed != MaybeKnown::Known(buffer) {
             unsafe { self.gl.bind_buffer(target, buffer) };
-            *currently_bound = buffer;
-            *last_flushed = buffer;
+            *currently_bound = MaybeKnown::Known(buffer);
+            *last_flushed = MaybeKnown::Known(buffer);
         }
     }
 
@@ -145,8 +166,18 @@ impl ManagedContext {
         }
     }
 
+    /// Mark a texture in the cache as invalid. This is required after making a foreign binding.
+    /// ## Example
+    /// ```rust
+    /// ctx.flush_state(); // more on this function later
+    /// gl.active_texture(glow::TEXTURE0);
+    /// glXBindTexImageEXT(...);
+    /// ctx.invalidate_texture(0); // the input is the currently selected texture unit, this must be done when you make a foreign binding call
+    /// ctx.draw_elements(...);
+    /// glXReleaseTexImageEXT(...);
+    /// ```
     pub fn invalidate_texture(&mut self, unit: u8) {
-        //self.last_flushed_state.bound_textures[unit as usize] = NativeTexture(0);
+        self.last_flushed_state.bound_textures[unit as usize] = MaybeKnown::Unknown;
     }
 
     /// Flush the internal cached state to the OpenGL context.
@@ -156,7 +187,7 @@ impl ManagedContext {
         unsafe {
             if self.last_flushed_state.bound_array_buffer != self.current_state.bound_array_buffer {
                 self.gl
-                    .bind_buffer(ARRAY_BUFFER, self.current_state.bound_array_buffer);
+                    .bind_buffer(ARRAY_BUFFER, self.current_state.bound_array_buffer.assume_known());
             }
 
             if self.last_flushed_state.bound_element_buffer
@@ -164,7 +195,7 @@ impl ManagedContext {
             {
                 self.gl.bind_buffer(
                     ELEMENT_ARRAY_BUFFER,
-                    self.current_state.bound_element_buffer,
+                    self.current_state.bound_element_buffer.assume_known(),
                 );
             }
 
@@ -177,7 +208,7 @@ impl ManagedContext {
             {
                 if current_texture != old_texture {
                     self.gl.active_texture(TEXTURE0 + i as u32);
-                    self.gl.bind_texture(TEXTURE_2D, *current_texture);
+                    self.gl.bind_texture(TEXTURE_2D, current_texture.assume_known());
                 }
             }
 
@@ -214,7 +245,7 @@ impl ManagedContext {
             }
 
             if self.last_flushed_state.program != self.current_state.program {
-                self.gl.use_program(self.current_state.program);
+                self.gl.use_program(self.current_state.program.assume_known());
             }
         }
 
