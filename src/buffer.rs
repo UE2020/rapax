@@ -11,14 +11,14 @@ pub enum BufferType {
     ElementArrayBuffer,
 }
 
-/// The buffer usage flag passed when allocating buffer data using `glBufferData`. 
+/// The buffer usage flag passed when allocating buffer data using `glBufferData`.
 /// Variants correspond to `GL_STATIC_DRAW`, `GL_DYNAMIC_DRAW`, and `GL_STREAM_DRAW`, respectively.
 #[derive(Debug, Clone, Copy)]
 #[repr(u32)]
 pub enum BufferUsage {
     Immutable = 0x88E4,
     Dynamic = 0x88E8,
-    Stream = 0x88E0
+    Stream = 0x88E0,
 }
 
 impl BufferUsage {
@@ -57,7 +57,8 @@ impl BufferHandle {
             let buffer = ctx.gl.create_buffer().unwrap();
             ctx.save();
             ctx.bind_array_buffer(buffer);
-            ctx.gl.buffer_data_u8_slice(ARRAY_BUFFER, data, usage.to_gl());
+            ctx.gl
+                .buffer_data_u8_slice(ARRAY_BUFFER, data, usage.to_gl());
             ctx.restore();
 
             buffer
@@ -67,7 +68,7 @@ impl BufferHandle {
             buffer,
             gl: ctx.gl.clone(),
             ty: BufferType::ArrayBuffer,
-            capacity: data.len()
+            capacity: data.len(),
         }
     }
 
@@ -77,7 +78,8 @@ impl BufferHandle {
             let buffer = ctx.gl.create_buffer().unwrap();
             ctx.save();
             ctx.bind_index_buffer(buffer);
-            ctx.gl.buffer_data_u8_slice(ELEMENT_ARRAY_BUFFER, data, usage.to_gl());
+            ctx.gl
+                .buffer_data_u8_slice(ELEMENT_ARRAY_BUFFER, data, usage.to_gl());
             ctx.restore();
 
             buffer
@@ -87,7 +89,7 @@ impl BufferHandle {
             buffer,
             gl: ctx.gl.clone(),
             ty: BufferType::ElementArrayBuffer,
-            capacity: data.len()
+            capacity: data.len(),
         }
     }
 
@@ -102,11 +104,17 @@ impl BufferHandle {
         match self.buffer_type() {
             BufferType::ArrayBuffer => {
                 ctx.bind_array_buffer(self.buffer);
-                unsafe { ctx.gl.buffer_data_u8_slice(ARRAY_BUFFER, data, usage.to_gl()); }
-            },
+                unsafe {
+                    ctx.gl
+                        .buffer_data_u8_slice(ARRAY_BUFFER, data, usage.to_gl());
+                }
+            }
             BufferType::ElementArrayBuffer => {
                 ctx.bind_index_buffer(self.buffer);
-                unsafe { ctx.gl.buffer_data_u8_slice(ELEMENT_ARRAY_BUFFER, data, usage.to_gl()); }
+                unsafe {
+                    ctx.gl
+                        .buffer_data_u8_slice(ELEMENT_ARRAY_BUFFER, data, usage.to_gl());
+                }
             }
         }
         ctx.restore();
@@ -114,23 +122,31 @@ impl BufferHandle {
         self.capacity = data.len();
     }
 
-    /// Update data in the buffer's data storage. 
+    /// Update data in the buffer's data storage.
     /// When updating the entire buffer, consider this function over `realloc`.
     /// This avoids the cost of reallocating the buffer object's data store.
     /// ## Panics
     /// The offset and the data being updated must lie inside the buffer.
     pub fn update(&self, ctx: &mut ManagedContext, offset: i32, data: &[u8]) {
-        assert!(offset as usize + data.len() <= self.capacity, "out of bounds write!");
+        assert!(
+            offset as usize + data.len() <= self.capacity,
+            "out of bounds write!"
+        );
 
         ctx.save();
         match self.buffer_type() {
             BufferType::ArrayBuffer => {
                 ctx.bind_array_buffer(self.buffer);
-                unsafe { ctx.gl.buffer_sub_data_u8_slice(ARRAY_BUFFER, offset, data); }
-            },
+                unsafe {
+                    ctx.gl.buffer_sub_data_u8_slice(ARRAY_BUFFER, offset, data);
+                }
+            }
             BufferType::ElementArrayBuffer => {
                 ctx.bind_index_buffer(self.buffer);
-                unsafe { ctx.gl.buffer_sub_data_u8_slice(ELEMENT_ARRAY_BUFFER, offset, data); }
+                unsafe {
+                    ctx.gl
+                        .buffer_sub_data_u8_slice(ELEMENT_ARRAY_BUFFER, offset, data);
+                }
             }
         }
         ctx.restore();

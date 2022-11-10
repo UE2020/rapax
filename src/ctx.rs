@@ -87,7 +87,7 @@ impl ManagedContext {
     /// Install the passed program object as a part of the current rendering state.
     pub fn use_program(&mut self, program: impl ProgramSource) {
         let program = Some(program.native_program());
-        if self.current_state.program != program {
+        if self.last_flushed_state.program != program {
             unsafe { self.gl.use_program(program) };
             self.current_state.program = program;
             self.last_flushed_state.program = program;
@@ -97,7 +97,7 @@ impl ManagedContext {
     /// Bind a buffer object to the array buffer binding point, `GL_ARRAY_BUFFER`.
     pub fn bind_array_buffer(&mut self, buffer: impl BufferSource) {
         let buffer = Some(buffer.native_buffer());
-        if self.current_state.bound_array_buffer != buffer {
+        if self.last_flushed_state.bound_array_buffer != buffer {
             unsafe { self.gl.bind_buffer(ARRAY_BUFFER, buffer) };
             self.current_state.bound_array_buffer = buffer;
             self.last_flushed_state.bound_array_buffer = buffer;
@@ -107,10 +107,32 @@ impl ManagedContext {
     /// Bind a buffer object to the index buffer binding point, `GL_ELEMENT_ARRAY_BUFFER`.
     pub fn bind_index_buffer(&mut self, buffer: impl BufferSource) {
         let buffer = Some(buffer.native_buffer());
-        if self.current_state.bound_element_buffer != buffer {
+        if self.last_flushed_state.bound_element_buffer != buffer {
             unsafe { self.gl.bind_buffer(ELEMENT_ARRAY_BUFFER, buffer) };
             self.current_state.bound_element_buffer = buffer;
             self.last_flushed_state.bound_element_buffer = buffer;
+        }
+    }
+
+    /// Bind a buffer object. The binding point will be determined using `BufferHandle::buffer_type`.
+    pub fn bind_any_buffer(&mut self, buffer: &BufferHandle) {
+        let (currently_bound, last_flushed, target) = match buffer.buffer_type() {
+            BufferType::ArrayBuffer => (
+                &mut self.current_state.bound_array_buffer,
+                &mut self.last_flushed_state.bound_array_buffer,
+                ARRAY_BUFFER,
+            ),
+            BufferType::ElementArrayBuffer => (
+                &mut self.current_state.bound_element_buffer,
+                &mut self.last_flushed_state.bound_element_buffer,
+                ELEMENT_ARRAY_BUFFER,
+            ),
+        };
+        let buffer = Some(buffer.native_buffer());
+        if *last_flushed != buffer {
+            unsafe { self.gl.bind_buffer(target, buffer) };
+            *currently_bound = buffer;
+            *last_flushed = buffer;
         }
     }
 
@@ -118,8 +140,13 @@ impl ManagedContext {
     /// Calling `flush_state` before calling any draw\* functions is highly advised.
     pub fn draw_elements(&mut self, mode: DrawMode, count: u32, ty: IndexType, offset: i32) {
         unsafe {
-            self.gl.draw_elements(mode.to_gl(), count as i32, ty as u32, offset);
+            self.gl
+                .draw_elements(mode.to_gl(), count as i32, ty as u32, offset);
         }
+    }
+
+    pub fn invalidate_texture(&mut self, unit: u8) {
+        //self.last_flushed_state.bound_textures[unit as usize] = NativeTexture(0);
     }
 
     /// Flush the internal cached state to the OpenGL context.

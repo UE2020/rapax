@@ -10,7 +10,11 @@ pub struct ShaderProgram {
 
 impl ShaderProgram {
     /// Create a new program, using sources passed in as strings.
-    pub fn new(ctx: &ManagedContext, vertex_shader_source: &str, fragment_shader_source: &str) -> Self {
+    pub fn new(
+        ctx: &ManagedContext,
+        vertex_shader_source: &str,
+        fragment_shader_source: &str,
+    ) -> Self {
         let shader = compile_shader(&ctx.gl, vertex_shader_source, fragment_shader_source);
         Self {
             program: shader,
@@ -18,7 +22,6 @@ impl ShaderProgram {
         }
     }
 }
-
 
 impl ProgramSource for ShaderProgram {
     fn native_program(&self) -> NativeProgram {
