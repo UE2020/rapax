@@ -30,12 +30,20 @@ impl BufferUsage {
 /// The size of an index buffer's indices.
 #[derive(Debug, Clone, Copy)]
 #[repr(u32)]
-pub enum IndexType {
-    UnsignedInt = 0x1405,
+pub enum DataType {
+    SignedByte = 0x1400,
+    UnsignedByte = 0x1401,
+    SignedShort = 0x1402,
     UnsignedShort = 0x1403,
+    SignedInt = 0x1404,
+    UnsignedInt = 0x1405,
+    HalfFloat = 0x140b,
+    Float = 0x1406,
+    Double = 0x140a,
+    Fixed = 0x140c,
 }
 
-impl IndexType {
+impl DataType {
     pub fn to_gl(&self) -> u32 {
         *self as u32
     }
@@ -164,7 +172,7 @@ impl Drop for BufferHandle {
     }
 }
 
-impl BufferSource for BufferHandle {
+impl BufferSource for &BufferHandle {
     fn native_buffer(&self) -> NativeBuffer {
         self.buffer
     }

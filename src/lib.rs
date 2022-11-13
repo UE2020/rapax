@@ -13,3 +13,8 @@ mod va;
 pub use va::*;
 
 use glow::*;
+
+pub use glow::{
+    COLOR_BUFFER_BIT,
+    DEPTH_BUFFER_BIT,
+};

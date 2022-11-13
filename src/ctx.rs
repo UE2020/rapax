@@ -1,6 +1,6 @@
 use super::*;
 
-use std::{sync::Arc, default};
+use std::{default, sync::Arc};
 
 /// The primitive mode used when calling draw\* functions.
 #[derive(Debug, Clone, Copy)]
@@ -23,14 +23,14 @@ impl DrawMode {
 #[derive(Debug, Clone, PartialEq, Eq)]
 enum MaybeKnown<T: Default> {
     Known(T),
-    Unknown
+    Unknown,
 }
 
 impl<T: Default> MaybeKnown<T> {
     fn assume_known(&self) -> &T {
         match self {
             Self::Known(v) => v,
-            Self::Unknown => panic!("Tried to unwrap invalidated binding")
+            Self::Unknown => panic!("Tried to unwrap invalidated binding"),
         }
     }
 }
@@ -47,11 +47,15 @@ struct ContextState {
     // bound objects
     bound_array_buffer: MaybeKnown<Option<NativeBuffer>>,
     bound_element_buffer: MaybeKnown<Option<NativeBuffer>>,
+    bound_vertex_array: MaybeKnown<Option<NativeVertexArray>>,
     bound_textures: [MaybeKnown<Option<NativeTexture>>; 16],
 
     // blend state
     blend_enabled: bool,
     blend_func: (u32, u32),
+
+    // clear color
+    clear_color: [f32; 4],
 
     // depth test
     depth_enabled: bool,
@@ -62,6 +66,9 @@ struct ContextState {
 
     // currently used program
     program: MaybeKnown<Option<NativeProgram>>,
+
+    // viewport
+    viewport: [i32; 4]
 }
 
 impl ContextState {
@@ -135,6 +142,16 @@ impl ManagedContext {
         }
     }
 
+    /// Bind a vertex array to the context.
+    pub fn bind_vertex_array(&mut self, buffer: impl VertexArraySource) {
+        let vao = Some(buffer.native_vertex_array());
+        if self.last_flushed_state.bound_vertex_array != MaybeKnown::Known(vao) {
+            unsafe { self.gl.bind_vertex_array(vao) };
+            self.current_state.bound_vertex_array = MaybeKnown::Known(vao);
+            self.last_flushed_state.bound_vertex_array = MaybeKnown::Known(vao);
+        }
+    }
+
     /// Bind a buffer object. The binding point will be determined using `BufferHandle::buffer_type`.
     pub fn bind_any_buffer(&mut self, buffer: &BufferHandle) {
         let (currently_bound, last_flushed, target) = match buffer.buffer_type() {
@@ -159,10 +176,45 @@ impl ManagedContext {
 
     /// Render primitives using bound vertex data & index data.
     /// Calling `flush_state` before calling any draw\* functions is highly advised.
-    pub fn draw_elements(&mut self, mode: DrawMode, count: u32, ty: IndexType, offset: i32) {
+    pub fn draw_elements(&mut self, mode: DrawMode, count: u32, ty: DataType, offset: i32) {
         unsafe {
             self.gl
                 .draw_elements(mode.to_gl(), count as i32, ty as u32, offset);
+        }
+    }
+
+    /// Render primitives using bound vertex data
+    /// Calling `flush_state` before calling any draw\* functions is highly advised.
+    pub fn draw_arrays(&mut self, mode: DrawMode, first: i32, count: i32) {
+        unsafe {
+            self.gl
+                .draw_arrays(mode.to_gl(), first as i32, count);
+        }
+    }
+
+    /// Clear buffers
+    /// Calling `flush_state` is highly advised before calling this function.
+    pub fn clear(&mut self, mask: u32) {
+        unsafe {
+            self.gl
+                .clear(mask);
+        }
+    }
+
+    pub fn set_clear_color(&mut self, color: [f32; 4]) {
+        if self.last_flushed_state.clear_color != color {
+            unsafe { self.gl.clear_color(color[0], color[1], color[2], color[3]) };
+            self.current_state.clear_color = color;
+            self.last_flushed_state.clear_color = color;
+        }
+    }
+
+    pub fn set_viewport(&mut self, x: i32, y: i32, w: i32, h: i32) {
+        let vp = [x, y, w, h];
+        if self.last_flushed_state.viewport != vp {
+            unsafe { self.gl.viewport(x, y, w, h) };
+            self.current_state.viewport = vp;
+            self.last_flushed_state.viewport = vp;
         }
     }
 
@@ -190,14 +242,21 @@ impl ManagedContext {
         self.last_flushed_state.bound_array_buffer = MaybeKnown::Unknown;
     }
 
+    /// Mark the cached array buffer as invalid.
+    pub fn invalidate_vertex_array(&mut self) {
+        self.last_flushed_state.bound_vertex_array = MaybeKnown::Unknown;
+    }
+
     /// Flush the internal cached state to the OpenGL context.
     /// ## Panics
     /// This **must** be called before calling any draw\* functions.
     pub fn flush_state(&mut self) {
         unsafe {
             if self.last_flushed_state.bound_array_buffer != self.current_state.bound_array_buffer {
-                self.gl
-                    .bind_buffer(ARRAY_BUFFER, *self.current_state.bound_array_buffer.assume_known());
+                self.gl.bind_buffer(
+                    ARRAY_BUFFER,
+                    *self.current_state.bound_array_buffer.assume_known(),
+                );
             }
 
             if self.last_flushed_state.bound_element_buffer
@@ -209,6 +268,11 @@ impl ManagedContext {
                 );
             }
 
+            if self.last_flushed_state.bound_vertex_array != self.current_state.bound_vertex_array {
+                self.gl
+                    .bind_vertex_array(*self.current_state.bound_vertex_array.assume_known());
+            }
+
             for ((i, current_texture), (_, old_texture)) in self
                 .current_state
                 .bound_textures
@@ -218,7 +282,8 @@ impl ManagedContext {
             {
                 if current_texture != old_texture {
                     self.gl.active_texture(TEXTURE0 + i as u32);
-                    self.gl.bind_texture(TEXTURE_2D, *current_texture.assume_known());
+                    self.gl
+                        .bind_texture(TEXTURE_2D, *current_texture.assume_known());
                 }
             }
 
@@ -233,6 +298,10 @@ impl ManagedContext {
                     self.current_state.blend_func.0,
                     self.current_state.blend_func.1,
                 );
+            }
+
+            if self.last_flushed_state.clear_color != self.current_state.clear_color {
+                self.gl.clear_color(self.current_state.clear_color[0], self.current_state.clear_color[1], self.current_state.clear_color[2], self.current_state.clear_color[3]);
             }
 
             if self.last_flushed_state.depth_enabled && !self.current_state.depth_enabled {
@@ -255,7 +324,12 @@ impl ManagedContext {
             }
 
             if self.last_flushed_state.program != self.current_state.program {
-                self.gl.use_program(*self.current_state.program.assume_known());
+                self.gl
+                    .use_program(*self.current_state.program.assume_known());
+            }
+
+            if self.last_flushed_state.viewport != self.current_state.viewport {
+                self.gl.viewport(self.current_state.viewport[0], self.current_state.viewport[1], self.current_state.viewport[2], self.current_state.viewport[3]);
             }
         }
 

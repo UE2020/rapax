@@ -7,3 +7,6 @@ edition = "2021"
 
 [dependencies]
 glow = "0.11.2"
+
+[dev-dependencies]
+glutin = "0.29"

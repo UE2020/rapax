@@ -23,7 +23,7 @@ impl ShaderProgram {
     }
 }
 
-impl ProgramSource for ShaderProgram {
+impl ProgramSource for &ShaderProgram {
     fn native_program(&self) -> NativeProgram {
         self.program
     }
@@ -66,7 +66,7 @@ fn compile_shader(
             let shader = gl
                 .create_shader(*shader_type)
                 .expect("Cannot create shader");
-            gl.shader_source(shader, &format!("{}\n{}", "#version 330", shader_source));
+            gl.shader_source(shader, shader_source);
             gl.compile_shader(shader);
             if !gl.get_shader_compile_status(shader) {
                 // TODO: use Result instead of panicking
