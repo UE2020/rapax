@@ -27,9 +27,9 @@ enum MaybeKnown<T: Default> {
 }
 
 impl<T: Default> MaybeKnown<T> {
-    fn assume_known(&self) -> T {
+    fn assume_known(&self) -> &T {
         match self {
-            Self::Known(v) => *v,
+            Self::Known(v) => v,
             Self::Unknown => panic!("Tried to unwrap invalidated binding")
         }
     }
@@ -180,6 +180,16 @@ impl ManagedContext {
         self.last_flushed_state.bound_textures[unit as usize] = MaybeKnown::Unknown;
     }
 
+    /// Mark the cached index buffer as invalid.
+    pub fn invalidate_index_buffer(&mut self) {
+        self.last_flushed_state.bound_element_buffer = MaybeKnown::Unknown;
+    }
+
+    /// Mark the cached array buffer as invalid.
+    pub fn invalidate_array_buffer(&mut self) {
+        self.last_flushed_state.bound_array_buffer = MaybeKnown::Unknown;
+    }
+
     /// Flush the internal cached state to the OpenGL context.
     /// ## Panics
     /// This **must** be called before calling any draw\* functions.
@@ -187,7 +197,7 @@ impl ManagedContext {
         unsafe {
             if self.last_flushed_state.bound_array_buffer != self.current_state.bound_array_buffer {
                 self.gl
-                    .bind_buffer(ARRAY_BUFFER, self.current_state.bound_array_buffer.assume_known());
+                    .bind_buffer(ARRAY_BUFFER, *self.current_state.bound_array_buffer.assume_known());
             }
 
             if self.last_flushed_state.bound_element_buffer
@@ -195,7 +205,7 @@ impl ManagedContext {
             {
                 self.gl.bind_buffer(
                     ELEMENT_ARRAY_BUFFER,
-                    self.current_state.bound_element_buffer.assume_known(),
+                    *self.current_state.bound_element_buffer.assume_known(),
                 );
             }
 
@@ -208,7 +218,7 @@ impl ManagedContext {
             {
                 if current_texture != old_texture {
                     self.gl.active_texture(TEXTURE0 + i as u32);
-                    self.gl.bind_texture(TEXTURE_2D, current_texture.assume_known());
+                    self.gl.bind_texture(TEXTURE_2D, *current_texture.assume_known());
                 }
             }
 
@@ -245,7 +255,7 @@ impl ManagedContext {
             }
 
             if self.last_flushed_state.program != self.current_state.program {
-                self.gl.use_program(self.current_state.program.assume_known());
+                self.gl.use_program(*self.current_state.program.assume_known());
             }
         }
 
