@@ -68,7 +68,7 @@ struct ContextState {
     program: MaybeKnown<Option<NativeProgram>>,
 
     // viewport
-    viewport: [i32; 4]
+    viewport: [i32; 4],
 }
 
 impl ContextState {
@@ -187,8 +187,7 @@ impl ManagedContext {
     /// Calling `flush_state` before calling any draw\* functions is highly advised.
     pub fn draw_arrays(&mut self, mode: DrawMode, first: i32, count: i32) {
         unsafe {
-            self.gl
-                .draw_arrays(mode.to_gl(), first as i32, count);
+            self.gl.draw_arrays(mode.to_gl(), first as i32, count);
         }
     }
 
@@ -196,8 +195,7 @@ impl ManagedContext {
     /// Calling `flush_state` is highly advised before calling this function.
     pub fn clear(&mut self, mask: u32) {
         unsafe {
-            self.gl
-                .clear(mask);
+            self.gl.clear(mask);
         }
     }
 
@@ -301,7 +299,12 @@ impl ManagedContext {
             }
 
             if self.last_flushed_state.clear_color != self.current_state.clear_color {
-                self.gl.clear_color(self.current_state.clear_color[0], self.current_state.clear_color[1], self.current_state.clear_color[2], self.current_state.clear_color[3]);
+                self.gl.clear_color(
+                    self.current_state.clear_color[0],
+                    self.current_state.clear_color[1],
+                    self.current_state.clear_color[2],
+                    self.current_state.clear_color[3],
+                );
             }
 
             if self.last_flushed_state.depth_enabled && !self.current_state.depth_enabled {
@@ -329,7 +332,12 @@ impl ManagedContext {
             }
 
             if self.last_flushed_state.viewport != self.current_state.viewport {
-                self.gl.viewport(self.current_state.viewport[0], self.current_state.viewport[1], self.current_state.viewport[2], self.current_state.viewport[3]);
+                self.gl.viewport(
+                    self.current_state.viewport[0],
+                    self.current_state.viewport[1],
+                    self.current_state.viewport[2],
+                    self.current_state.viewport[3],
+                );
             }
         }
 

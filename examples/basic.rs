@@ -1,22 +1,18 @@
 use std::sync::Arc;
 
 fn main() {
-    let (gl, window, event_loop) = {
+    let (gl, window, event_loop) = unsafe {
         let event_loop = glutin::event_loop::EventLoop::new();
         let window_builder = glutin::window::WindowBuilder::new()
             .with_title("Hello triangle!")
             .with_inner_size(glutin::dpi::LogicalSize::new(1024.0, 768.0));
-        let window = unsafe {
-            glutin::ContextBuilder::new()
-                .with_vsync(true)
-                .build_windowed(window_builder, &event_loop)
-                .unwrap()
-                .make_current()
-                .unwrap()
-        };
-        let gl = unsafe {
-            glow::Context::from_loader_function(|s| window.get_proc_address(s) as *const _)
-        };
+        let window = glutin::ContextBuilder::new()
+            .with_vsync(true)
+            .build_windowed(window_builder, &event_loop)
+            .unwrap()
+            .make_current()
+            .unwrap();
+        let gl = glow::Context::from_loader_function(|s| window.get_proc_address(s) as *const _);
         (Arc::new(gl), window, event_loop)
     };
 
@@ -60,7 +56,6 @@ fn main() {
                 window.window().request_redraw();
             }
             Event::RedrawRequested(_) => {
-                //gl.clear(glow::COLOR_BUFFER_BIT);
                 ctx.flush_state();
                 ctx.clear(rapax::COLOR_BUFFER_BIT);
                 ctx.draw_arrays(rapax::DrawMode::Triangles, 0, 3);
@@ -69,7 +64,12 @@ fn main() {
             Event::WindowEvent { ref event, .. } => match event {
                 WindowEvent::Resized(physical_size) => {
                     window.resize(*physical_size);
-                    ctx.set_viewport(0, 0, physical_size.width as i32, physical_size.height as i32)
+                    ctx.set_viewport(
+                        0,
+                        0,
+                        physical_size.width as i32,
+                        physical_size.height as i32,
+                    )
                 }
                 WindowEvent::CloseRequested => *control_flow = ControlFlow::Exit,
                 _ => (),
