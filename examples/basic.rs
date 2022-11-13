@@ -1,7 +1,7 @@
 use std::sync::Arc;
 
 fn main() {
-    let (gl, shader_version, window, event_loop) = {
+    let (gl, window, event_loop) = {
         let event_loop = glutin::event_loop::EventLoop::new();
         let window_builder = glutin::window::WindowBuilder::new()
             .with_title("Hello triangle!")
@@ -17,7 +17,7 @@ fn main() {
         let gl = unsafe {
             glow::Context::from_loader_function(|s| window.get_proc_address(s) as *const _)
         };
-        (Arc::new(gl), "#version 410", window, event_loop)
+        (Arc::new(gl), window, event_loop)
     };
 
     let mut ctx = rapax::ManagedContext::new(gl);
