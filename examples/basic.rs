@@ -1,13 +1,16 @@
 use std::sync::Arc;
 
+use glow::HasContext;
+
 fn main() {
     let (gl, window, event_loop) = unsafe {
         let event_loop = glutin::event_loop::EventLoop::new();
         let window_builder = glutin::window::WindowBuilder::new()
-            .with_title("Hello triangle!")
+            .with_title("Demo")
             .with_inner_size(glutin::dpi::LogicalSize::new(1024.0, 768.0));
         let window = glutin::ContextBuilder::new()
             .with_vsync(true)
+            .with_multisampling(4)
             .build_windowed(window_builder, &event_loop)
             .unwrap()
             .make_current()
@@ -16,6 +19,8 @@ fn main() {
         (Arc::new(gl), window, event_loop)
     };
 
+    let max_samples = unsafe { gl.get_parameter_i32(glow::MAX_SAMPLES) };
+    println!("Max samples detected: {}", max_samples);
     let mut ctx = rapax::ManagedContext::new(gl);
     let va = rapax::VertexArrayObject::new(&mut ctx);
     ctx.bind_vertex_array(&va);
