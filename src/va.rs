@@ -25,28 +25,26 @@ impl VertexArrayObject {
         stride: i32,
         offset: i32,
     ) {
-        ctx.save();
-        ctx.bind_vertex_array(self);
-        unsafe {
-            self.gl.vertex_attrib_pointer_f32(
-                index,
-                size,
-                data_type as _,
-                normalized,
-                stride,
-                offset,
-            );
-        }
-        ctx.restore();
+        ctx.bind_vertex_array_with(self.vao, |ctx| {
+            unsafe {
+                self.gl.vertex_attrib_pointer_f32(
+                    index,
+                    size,
+                    data_type as _,
+                    normalized,
+                    stride,
+                    offset,
+                );
+            }
+        });
     }
 
     pub fn enable_attrib(&self, ctx: &mut ManagedContext, index: u32) {
-        ctx.save();
-        ctx.bind_vertex_array(self);
-        unsafe {
-            self.gl.enable_vertex_attrib_array(index);
-        }
-        ctx.restore();
+        ctx.bind_vertex_array_with(self.vao, |ctx| {
+            unsafe {
+                self.gl.enable_vertex_attrib_array(index);
+            }
+        });
     }
 }
 
@@ -63,5 +61,11 @@ pub trait VertexArraySource {
 impl VertexArraySource for &VertexArrayObject {
     fn native_vertex_array(&self) -> NativeVertexArray {
         self.vao
+    }
+}
+
+impl VertexArraySource for NativeVertexArray {
+    fn native_vertex_array(&self) -> NativeVertexArray {
+        *self
     }
 }

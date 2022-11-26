@@ -23,7 +23,6 @@ fn main() {
     println!("Max samples detected: {}", max_samples);
     let mut ctx = rapax::ManagedContext::new(gl);
     let va = rapax::VertexArrayObject::new(&mut ctx);
-    ctx.bind_vertex_array(&va);
     let program = rapax::ShaderProgram::new(
         &mut ctx,
         r#"#version 410
@@ -63,7 +62,9 @@ fn main() {
             Event::RedrawRequested(_) => {
                 ctx.flush_state();
                 ctx.clear(rapax::COLOR_BUFFER_BIT);
-                ctx.draw_arrays(rapax::DrawMode::Triangles, 0, 3);
+                ctx.bind_vertex_array_with(&va, |ctx| {
+                    ctx.draw_arrays(rapax::DrawMode::Triangles, 0, 3);
+                });
                 window.swap_buffers().unwrap();
             }
             Event::WindowEvent { ref event, .. } => match event {

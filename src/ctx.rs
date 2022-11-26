@@ -1,3 +1,5 @@
+use crate::blend::BlendFactor;
+
 use super::*;
 
 use std::{default, sync::Arc};
@@ -47,7 +49,6 @@ struct ContextState {
     // bound objects
     bound_array_buffer: MaybeKnown<Option<NativeBuffer>>,
     bound_element_buffer: MaybeKnown<Option<NativeBuffer>>,
-    bound_vertex_array: MaybeKnown<Option<NativeVertexArray>>,
     bound_textures: [MaybeKnown<Option<NativeTexture>>; 16],
 
     // blend state
@@ -62,7 +63,7 @@ struct ContextState {
 
     // depth write & color write
     depth_write: bool,
-    color_write: bool,
+    color_write: [bool; 4],
 
     // currently used program
     program: MaybeKnown<Option<NativeProgram>>,
@@ -75,7 +76,7 @@ impl ContextState {
     pub fn new() -> Self {
         Self {
             depth_write: true,
-            color_write: true,
+            color_write: [true, true, true, true],
             ..Default::default()
         }
     }
@@ -112,6 +113,56 @@ impl ManagedContext {
         self.current_state = self.state_stack.pop().unwrap();
     }
 
+    /// Bind the given vertex array to the context. The vertex array will be unbound after the closure is executed to prevent state contamination.
+    pub fn bind_vertex_array_with<F>(&mut self, va: impl VertexArraySource, func: F)
+        where F: FnOnce(&mut ManagedContext)
+    {
+        // bind the vertex array
+        unsafe { self.gl.bind_vertex_array(Some(va.native_vertex_array())) };
+        func(self);
+        unsafe { self.gl.bind_vertex_array(None) };
+    }
+
+    /// Set the blend func.
+    pub fn set_blend_func(&mut self, src: BlendFactor, dst: BlendFactor) {
+        if self.last_flushed_state.blend_func != (src as u32, dst as u32) {
+            self.last_flushed_state.blend_func = (src as u32, dst as u32);
+            self.current_state.blend_func = (src as u32, dst as u32);
+            unsafe { self.gl.blend_func(src as u32, dst as u32); };
+        }
+    }
+
+    /// Enable blending.
+    pub fn set_blend(&mut self, enabled: bool) {
+        if self.last_flushed_state.blend_enabled != enabled {
+            self.last_flushed_state.blend_enabled = enabled;
+            self.current_state.blend_enabled = enabled;
+            match enabled {
+                true => unsafe { self.gl.enable(BLEND) },
+                false => unsafe { self.gl.disable(BLEND) }
+            }
+        }
+    }
+
+    /// Set depth write.
+    pub fn set_depth_write(&mut self, enabled: bool) {
+        if self.last_flushed_state.depth_write != enabled {
+            self.last_flushed_state.depth_write = enabled;
+            self.current_state.depth_write = enabled;
+            unsafe { self.gl.depth_mask(enabled) }
+        }
+    }
+
+    /// Set color write.
+    pub fn set_color_write(&mut self, r: bool, g: bool, b: bool, a: bool) {
+        let enabled = [r, g, b, a];
+        if self.last_flushed_state.color_write != enabled {
+            self.last_flushed_state.color_write = enabled;
+            self.current_state.color_write = enabled;
+            unsafe { self.gl.color_mask(r, g, b, a) }
+        }
+    }
+
     /// Install the passed program object as a part of the current rendering state.
     pub fn use_program(&mut self, program: impl ProgramSource) {
         let program = Some(program.native_program());
@@ -119,6 +170,15 @@ impl ManagedContext {
             unsafe { self.gl.use_program(program) };
             self.current_state.program = MaybeKnown::Known(program);
             self.last_flushed_state.program = MaybeKnown::Known(program);
+        }
+    }
+
+    /// Uninstall the current shader program as a part of the current rendering state.
+    pub fn unuse_program(&mut self) {
+        if self.last_flushed_state.program != MaybeKnown::Known(None) {
+            unsafe { self.gl.use_program(None) };
+            self.current_state.program = MaybeKnown::Known(None);
+            self.last_flushed_state.program = MaybeKnown::Known(None);
         }
     }
 
@@ -132,6 +192,15 @@ impl ManagedContext {
         }
     }
 
+    /// Unbind the currently bound buffer object from the array buffer binding point, `GL_ARRAY_BUFFER`.
+    pub fn unbind_array_buffer(&mut self) {
+        if self.last_flushed_state.bound_array_buffer != MaybeKnown::Known(None) {
+            unsafe { self.gl.bind_buffer(ARRAY_BUFFER, None) };
+            self.current_state.bound_array_buffer = MaybeKnown::Known(None);
+            self.last_flushed_state.bound_array_buffer = MaybeKnown::Known(None);
+        }
+    }
+
     /// Bind a buffer object to the index buffer binding point, `GL_ELEMENT_ARRAY_BUFFER`.
     pub fn bind_index_buffer(&mut self, buffer: impl BufferSource) {
         let buffer = Some(buffer.native_buffer());
@@ -142,13 +211,12 @@ impl ManagedContext {
         }
     }
 
-    /// Bind a vertex array to the context.
-    pub fn bind_vertex_array(&mut self, buffer: impl VertexArraySource) {
-        let vao = Some(buffer.native_vertex_array());
-        if self.last_flushed_state.bound_vertex_array != MaybeKnown::Known(vao) {
-            unsafe { self.gl.bind_vertex_array(vao) };
-            self.current_state.bound_vertex_array = MaybeKnown::Known(vao);
-            self.last_flushed_state.bound_vertex_array = MaybeKnown::Known(vao);
+    /// Unbind the currently bound buffer object from the array buffer binding point, `GL_ELEMENT_ARRAY_BUFFER`.
+    pub fn unbind_index_buffer(&mut self) {
+        if self.last_flushed_state.bound_element_buffer != MaybeKnown::Known(None) {
+            unsafe { self.gl.bind_buffer(ELEMENT_ARRAY_BUFFER, None) };
+            self.current_state.bound_element_buffer = MaybeKnown::Known(None);
+            self.last_flushed_state.bound_element_buffer = MaybeKnown::Known(None);
         }
     }
 
@@ -240,11 +308,6 @@ impl ManagedContext {
         self.last_flushed_state.bound_array_buffer = MaybeKnown::Unknown;
     }
 
-    /// Mark the cached array buffer as invalid.
-    pub fn invalidate_vertex_array(&mut self) {
-        self.last_flushed_state.bound_vertex_array = MaybeKnown::Unknown;
-    }
-
     /// Flush the internal cached state to the OpenGL context.
     /// ## Panics
     /// This **must** be called before calling any draw\* functions.
@@ -264,11 +327,6 @@ impl ManagedContext {
                     ELEMENT_ARRAY_BUFFER,
                     *self.current_state.bound_element_buffer.assume_known(),
                 );
-            }
-
-            if self.last_flushed_state.bound_vertex_array != self.current_state.bound_vertex_array {
-                self.gl
-                    .bind_vertex_array(*self.current_state.bound_vertex_array.assume_known());
             }
 
             for ((i, current_texture), (_, old_texture)) in self
@@ -315,10 +373,10 @@ impl ManagedContext {
 
             if self.last_flushed_state.color_write != self.current_state.color_write {
                 self.gl.color_mask(
-                    self.current_state.color_write,
-                    self.current_state.color_write,
-                    self.current_state.color_write,
-                    self.current_state.color_write,
+                    self.current_state.color_write[0],
+                    self.current_state.color_write[1],
+                    self.current_state.color_write[2],
+                    self.current_state.color_write[3],
                 );
             }
 
