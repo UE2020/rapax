@@ -49,9 +49,18 @@ impl ShaderProgram {
         ctx.restore();
     }
 
+    /// Set a float1 uniform on the shader program.
+    pub fn set_uniform_float1(&self, ctx: &mut ManagedContext, name: &str, value: f32) {
+        ctx.save();
+        ctx.use_program(self);
+        let loc = unsafe { ctx.gl.get_uniform_location(self.program, name) };
+        unsafe { ctx.gl.uniform_1_f32(loc.as_ref(), value) };
+        ctx.restore();
+    }
+
     /// Set a mat2 uniform on the shader program.
     /// If you're not sure what `transpose` means, simply make it false.
-    pub fn set_uniform_mat2(&self, ctx: &mut ManagedContext, name: &str, value: &[f32], transpose: bool) {
+    pub fn set_uniform_mat2(&self, ctx: &mut ManagedContext, name: &str, value: &[f32; 4], transpose: bool) {
         ctx.save();
         ctx.use_program(self);
         let loc = unsafe { ctx.gl.get_uniform_location(self.program, name) };
@@ -61,7 +70,7 @@ impl ShaderProgram {
 
     /// Set a mat3 uniform on the shader program.
     /// If you're not sure what `transpose` means, simply make it false.
-    pub fn set_uniform_mat3(&self, ctx: &mut ManagedContext, name: &str, value: &[f32], transpose: bool) {
+    pub fn set_uniform_mat3(&self, ctx: &mut ManagedContext, name: &str, value: &[f32; 9], transpose: bool) {
         ctx.save();
         ctx.use_program(self);
         let loc = unsafe { ctx.gl.get_uniform_location(self.program, name) };
@@ -71,7 +80,7 @@ impl ShaderProgram {
 
     /// Set a mat4 uniform on the shader program.
     /// If you're not sure what `transpose` means, simply make it false.
-    pub fn set_uniform_mat4(&self, ctx: &mut ManagedContext, name: &str, value: &[f32], transpose: bool) {
+    pub fn set_uniform_mat4(&self, ctx: &mut ManagedContext, name: &str, value: &[f32; 16], transpose: bool) {
         ctx.save();
         ctx.use_program(self);
         let loc = unsafe { ctx.gl.get_uniform_location(self.program, name) };

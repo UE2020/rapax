@@ -2,6 +2,11 @@ use std::sync::Arc;
 
 use glow::HasContext;
 
+use cgmath::*;
+
+use glutin::event::{Event, WindowEvent};
+use glutin::event_loop::ControlFlow;
+
 fn main() {
     let (gl, window, event_loop) = unsafe {
         let event_loop = glutin::event_loop::EventLoop::new();
@@ -27,31 +32,33 @@ fn main() {
         &mut ctx,
         r#"#version 410
         const vec2 verts[3] = vec2[3](
-            vec2(0.5f, 1.0f),
+            vec2(100.0f, 200.0f),
             vec2(0.0f, 0.0f),
-            vec2(1.0f, 0.0f)
+            vec2(200.0f, 0.0f)
         );
         out vec2 vert;
+        uniform mat4 uMVP;
         void main() {
             vert = verts[gl_VertexID];
-            gl_Position = vec4(vert - 0.5, 0.0, 1.0);
+            gl_Position = uMVP * vec4(vert, 0.0, 1.0);
         }"#,
         r#"#version 410
         precision mediump float;
         in vec2 vert;
         out vec4 color;
+
+        uniform vec4 uColor;
         void main() {
-            color = vec4(vert, 0.5, 1.0);
+            color = uColor;
         }"#,
     );
 
     ctx.use_program(&program);
 
-    use glutin::event::{Event, WindowEvent};
-    use glutin::event_loop::ControlFlow;
+    let mut rotation = 0.0f32;
 
     event_loop.run(move |event, _, control_flow| {
-        *control_flow = ControlFlow::Wait;
+        *control_flow = ControlFlow::Poll;
         match event {
             Event::LoopDestroyed => {
                 return;
@@ -60,6 +67,16 @@ fn main() {
                 window.window().request_redraw();
             }
             Event::RedrawRequested(_) => {
+                let size = window.window().inner_size();
+
+                rotation += 0.01;
+                program.set_uniform_float4(&mut ctx, "uColor", &[1.0, 0.0, 0.2, 1.0]);
+
+                let view = ortho(0.0, size.width as f32, size.height as f32, 0.0, 0.0, 1.0);
+                let model: Matrix4<f32> = Matrix4::from_translation(vec3(200.0, 200.0, 0.0)) * Matrix4::from_angle_z(Rad(rotation));
+                let mvp = view * model;
+                program.set_uniform_mat4(&mut ctx, "uMVP", &mvp.as_ref(), false);
+
                 ctx.flush_state();
                 ctx.clear(rapax::COLOR_BUFFER_BIT);
                 ctx.bind_vertex_array_with(&va, |ctx| {
