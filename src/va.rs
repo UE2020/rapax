@@ -25,7 +25,7 @@ impl VertexArrayObject {
         stride: i32,
         offset: i32,
     ) {
-        ctx.bind_vertex_array_with(self.vao, |ctx| {
+        ctx.bind_vertex_array_with(self.vao, |_| {
             unsafe {
                 self.gl.vertex_attrib_pointer_f32(
                     index,
