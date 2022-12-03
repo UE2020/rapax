@@ -30,21 +30,13 @@ Using a foreign texture is as easy as:
 ```rs
 ctx.bind_texture(0, foreign_texture_name);
 ```
-Similarly, using a foreign shader is as easy as:
-```rs
-ctx.use_program(shader_name);
-```
-I'm sure you get the point by now. All of Rapax's context functions take in Rapax's managed primitives in addition to raw names/handles.
+All of Rapax's context functions take in Rapax's managed primitives in addition to raw names/handles.
 
 In the case of extensions such as `GLX_EXT_texture_from_pixmap` it's as easy as:
 ```rs
-ctx.flush_state(); // more on this function later
 gl.active_texture(glow::TEXTURE0);
 glXBindTexImageEXT(...);
-ctx.invalidate_texture(0); // the input is the currently selected texture unit, this must be done when you make a foreign binding call
 ctx.draw_elements(...);
 glXReleaseTexImageEXT(...);
 ```
-
-## Caveats
-One caveat to keep in mind when touching internal OpenGL is that Rapax caches internal state for performance reasons. Before drawing anything, it is on the user to call `ctx.flush_state()` to flush cached state to the OpenGL context. Manual flushing is a consequence of Rapax's hackability.
+Rapax does not cache any internal GL state, so there is no way to "break" the context by binding textures/programs/buffers manually.
