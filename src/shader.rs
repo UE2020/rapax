@@ -26,7 +26,7 @@ impl ShaderProgram {
     pub fn set_uniform_float4(&self, name: &str, value: &[f32; 4]) {
         unsafe {
             self.gl.use_program(Some(self.program));
-            let loc = unsafe { self.gl.get_uniform_location(self.program, name) };
+            let loc = self.gl.get_uniform_location(self.program, name);
             self.gl
                 .uniform_4_f32(loc.as_ref(), value[0], value[1], value[2], value[3])
         }
@@ -36,7 +36,7 @@ impl ShaderProgram {
     pub fn set_uniform_float3(&self, name: &str, value: &[f32; 3]) {
         unsafe {
             self.gl.use_program(Some(self.program));
-            let loc = unsafe { self.gl.get_uniform_location(self.program, name) };
+            let loc = self.gl.get_uniform_location(self.program, name);
             self.gl
                 .uniform_3_f32(loc.as_ref(), value[0], value[1], value[2])
         }
@@ -46,7 +46,7 @@ impl ShaderProgram {
     pub fn set_uniform_float2(&self, name: &str, value: &[f32; 2]) {
         unsafe {
             self.gl.use_program(Some(self.program));
-            let loc = unsafe { self.gl.get_uniform_location(self.program, name) };
+            let loc = self.gl.get_uniform_location(self.program, name);
             self.gl.uniform_2_f32(loc.as_ref(), value[0], value[1])
         }
     }
@@ -55,7 +55,7 @@ impl ShaderProgram {
     pub fn set_uniform_float1(&self, name: &str, value: f32) {
         unsafe {
             self.gl.use_program(Some(self.program));
-            let loc = unsafe { self.gl.get_uniform_location(self.program, name) };
+            let loc = self.gl.get_uniform_location(self.program, name);
             self.gl.uniform_1_f32(loc.as_ref(), value)
         }
     }
@@ -65,7 +65,7 @@ impl ShaderProgram {
     pub fn set_uniform_mat2(&self, name: &str, value: &[f32; 4], transpose: bool) {
         unsafe {
             self.gl.use_program(Some(self.program));
-            let loc = unsafe { self.gl.get_uniform_location(self.program, name) };
+            let loc = self.gl.get_uniform_location(self.program, name);
 
             self.gl
                 .uniform_matrix_2_f32_slice(loc.as_ref(), transpose, value)
@@ -77,7 +77,7 @@ impl ShaderProgram {
     pub fn set_uniform_mat3(&self, name: &str, value: &[f32; 9], transpose: bool) {
         unsafe {
             self.gl.use_program(Some(self.program));
-            let loc = unsafe { self.gl.get_uniform_location(self.program, name) };
+            let loc = self.gl.get_uniform_location(self.program, name);
 
             self.gl
                 .uniform_matrix_3_f32_slice(loc.as_ref(), transpose, value)
@@ -89,7 +89,7 @@ impl ShaderProgram {
     pub fn set_uniform_mat4(&self, name: &str, value: &[f32; 16], transpose: bool) {
         unsafe {
             self.gl.use_program(Some(self.program));
-            let loc = unsafe { self.gl.get_uniform_location(self.program, name) };
+            let loc = self.gl.get_uniform_location(self.program, name);
             self.gl
                 .uniform_matrix_4_f32_slice(loc.as_ref(), transpose, value)
         }
