@@ -63,11 +63,9 @@ impl BufferHandle {
     pub fn array_buffer(ctx: &mut ManagedContext, usage: BufferUsage, data: &[u8]) -> Self {
         let buffer = unsafe {
             let buffer = ctx.gl.create_buffer().unwrap();
-            ctx.save();
-            ctx.bind_array_buffer(buffer);
+            ctx.gl.bind_buffer(ARRAY_BUFFER, Some(buffer));
             ctx.gl
                 .buffer_data_u8_slice(ARRAY_BUFFER, data, usage.to_gl());
-            ctx.restore();
 
             buffer
         };
@@ -84,11 +82,9 @@ impl BufferHandle {
     pub fn index_buffer(ctx: &mut ManagedContext, usage: BufferUsage, data: &[u8]) -> Self {
         let buffer = unsafe {
             let buffer = ctx.gl.create_buffer().unwrap();
-            ctx.save();
-            ctx.bind_index_buffer(buffer);
+            ctx.gl.bind_buffer(ELEMENT_ARRAY_BUFFER, Some(buffer));
             ctx.gl
                 .buffer_data_u8_slice(ELEMENT_ARRAY_BUFFER, data, usage.to_gl());
-            ctx.restore();
 
             buffer
         };
@@ -107,25 +103,21 @@ impl BufferHandle {
     }
 
     /// Reallocate the buffer's underlying storage.
-    pub fn realloc(&mut self, ctx: &mut ManagedContext, usage: BufferUsage, data: &[u8]) {
-        ctx.save();
+    pub fn realloc(&mut self, usage: BufferUsage, data: &[u8]) {
         match self.buffer_type() {
-            BufferType::ArrayBuffer => {
-                ctx.bind_array_buffer(self.buffer);
-                unsafe {
-                    ctx.gl
-                        .buffer_data_u8_slice(ARRAY_BUFFER, data, usage.to_gl());
-                }
-            }
-            BufferType::ElementArrayBuffer => {
-                ctx.bind_index_buffer(self.buffer);
-                unsafe {
-                    ctx.gl
-                        .buffer_data_u8_slice(ELEMENT_ARRAY_BUFFER, data, usage.to_gl());
-                }
-            }
+            BufferType::ArrayBuffer => unsafe {
+                self.gl.bind_buffer(ARRAY_BUFFER, Some(self.buffer));
+
+                self.gl
+                    .buffer_data_u8_slice(ARRAY_BUFFER, data, usage.to_gl());
+            },
+            BufferType::ElementArrayBuffer => unsafe {
+                self.gl.bind_buffer(ELEMENT_ARRAY_BUFFER, Some(self.buffer));
+
+                self.gl
+                    .buffer_data_u8_slice(ELEMENT_ARRAY_BUFFER, data, usage.to_gl());
+            },
         }
-        ctx.restore();
 
         self.capacity = data.len();
     }
@@ -135,29 +127,23 @@ impl BufferHandle {
     /// This avoids the cost of reallocating the buffer object's data store.
     /// ## Panics
     /// The offset and the data being updated must lie inside the buffer.
-    pub fn update(&self, ctx: &mut ManagedContext, offset: i32, data: &[u8]) {
+    pub fn update(&self, offset: i32, data: &[u8]) {
         assert!(
             offset as usize + data.len() <= self.capacity,
             "out of bounds write!"
         );
 
-        ctx.save();
         match self.buffer_type() {
-            BufferType::ArrayBuffer => {
-                ctx.bind_array_buffer(self.buffer);
-                unsafe {
-                    ctx.gl.buffer_sub_data_u8_slice(ARRAY_BUFFER, offset, data);
-                }
-            }
-            BufferType::ElementArrayBuffer => {
-                ctx.bind_index_buffer(self.buffer);
-                unsafe {
-                    ctx.gl
-                        .buffer_sub_data_u8_slice(ELEMENT_ARRAY_BUFFER, offset, data);
-                }
-            }
+            BufferType::ArrayBuffer => unsafe {
+                self.gl.bind_buffer(ARRAY_BUFFER, Some(self.buffer));
+                self.gl.buffer_sub_data_u8_slice(ARRAY_BUFFER, offset, data);
+            },
+            BufferType::ElementArrayBuffer => unsafe {
+                self.gl.bind_buffer(ELEMENT_ARRAY_BUFFER, Some(self.buffer));
+                self.gl
+                    .buffer_sub_data_u8_slice(ELEMENT_ARRAY_BUFFER, offset, data);
+            },
         }
-        ctx.restore();
     }
 
     /// The buffer type, either `ArrayBuffer` or `ElementArrayBuffer`.

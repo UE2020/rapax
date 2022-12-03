@@ -17,7 +17,6 @@ impl VertexArrayObject {
 
     pub fn attrib_pointer(
         &self,
-        ctx: &mut ManagedContext,
         index: u32,
         size: i32,
         data_type: DataType,
@@ -25,26 +24,26 @@ impl VertexArrayObject {
         stride: i32,
         offset: i32,
     ) {
-        ctx.bind_vertex_array_with(self.vao, |_| {
-            unsafe {
-                self.gl.vertex_attrib_pointer_f32(
-                    index,
-                    size,
-                    data_type as _,
-                    normalized,
-                    stride,
-                    offset,
-                );
-            }
-        });
+        unsafe {
+            self.gl.bind_vertex_array(Some(self.vao));
+            self.gl.vertex_attrib_pointer_f32(
+                index,
+                size,
+                data_type as _,
+                normalized,
+                stride,
+                offset,
+            );
+            self.gl.bind_vertex_array(None);
+        }
     }
 
     pub fn enable_attrib(&self, ctx: &mut ManagedContext, index: u32) {
-        ctx.bind_vertex_array_with(self.vao, |ctx| {
-            unsafe {
-                self.gl.enable_vertex_attrib_array(index);
-            }
-        });
+        unsafe {
+            self.gl.bind_vertex_array(Some(self.vao));
+            self.gl.enable_vertex_attrib_array(index);
+            self.gl.bind_vertex_array(None);
+        }
     }
 }
 
