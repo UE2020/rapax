@@ -24,17 +24,20 @@ impl DrawMode {
 #[derive(Debug)]
 pub struct ManagedContext {
     pub(crate) gl: Arc<glow::Context>,
-    current_pipeline: Option<RenderPipeline>,
+    current_program: Option<Arc<ShaderProgram>>,
+    default_vao: NativeVertexArray
 }
 
 impl ManagedContext {
     pub fn new(gl: Arc<glow::Context>) -> Self {
         Self {
-            gl,
-            current_pipeline: None,
+            gl: gl.clone(),
+            current_program: None,
+            default_vao: unsafe { gl.create_vertex_array().expect("vertex array is required") }
         }
     }
 
+    /// Apply a rendering pipline to the context. There must be a pipeline applied in order for the `set_uniform_*` series of functions to work.
     pub fn set_pipeline(&mut self, pipeline: &RenderPipeline) {        
         unsafe {
             if pipeline.blend_enabled {
@@ -61,19 +64,32 @@ impl ManagedContext {
             self.gl.depth_mask(pipeline.depth_write);
 
             self.gl.use_program(Some(pipeline.program.program));
+
+            self.gl.bind_vertex_array(Some(self.default_vao));
+            // setup attributes
+            for (index, attribute) in pipeline.vertex_attributes.iter().enumerate() {
+                self.gl.vertex_attrib_pointer_f32(
+                    index as _,
+                    attribute.size,
+                    attribute.data_type as _,
+                    attribute.normalized,
+                    attribute.stride,
+                    attribute.offset,
+                );
+
+                self.gl.vertex_attrib_divisor(index as u32, attribute.divisor);
+
+                self.gl.enable_vertex_attrib_array(index as _);
+            }
         }
 
-        self.current_pipeline = Some(pipeline.clone());
+        self.current_program = Some(pipeline.program.clone());
     }
 
     /// Set a float4 uniform on the currently applied pipeline.
     pub fn set_uniform_float4(&self, name: &str, value: &[f32; 4]) {
         unsafe {
-            let program = self
-                .current_pipeline.as_ref()
-                .expect("there should be an active pipeline")
-                .program
-                .program;
+            let program = self.current_program.as_ref().expect("there should be a bound pipeline").program;
             let loc = self.gl.get_uniform_location(program, name);
             self.gl
                 .uniform_4_f32(loc.as_ref(), value[0], value[1], value[2], value[3]);
@@ -83,11 +99,8 @@ impl ManagedContext {
     /// Set a float3 uniform on the currently applied pipeline.
     pub fn set_uniform_float3(&self, name: &str, value: &[f32; 3]) {
         unsafe {
-            let program = self
-                .current_pipeline.as_ref()
-                .expect("there should be an active pipeline")
-                .program
-                .program;
+            let program = self.current_program.as_ref().expect("there should be a bound pipeline").program;
+
             let loc = self.gl.get_uniform_location(program, name);
             self.gl
                 .uniform_3_f32(loc.as_ref(), value[0], value[1], value[2]);
@@ -97,11 +110,8 @@ impl ManagedContext {
     /// Set a float3 uniform on the currently applied pipeline.
     pub fn set_uniform_float2(&self, name: &str, value: &[f32; 2]) {
         unsafe {
-            let program = self
-                .current_pipeline.as_ref()
-                .expect("there should be an active pipeline")
-                .program
-                .program;
+            let program = self.current_program.as_ref().expect("there should be a bound pipeline").program;
+
             let loc = self.gl.get_uniform_location(program, name);
             self.gl.uniform_2_f32(loc.as_ref(), value[0], value[1]);
         }
@@ -110,11 +120,8 @@ impl ManagedContext {
     /// Set a float1 uniform on the currently applied pipeline.
     pub fn set_uniform_float1(&self, name: &str, value: f32) {
         unsafe {
-            let program = self
-                .current_pipeline.as_ref()
-                .expect("there should be an active pipeline")
-                .program
-                .program;
+            let program = self.current_program.as_ref().expect("there should be a bound pipeline").program;
+
             let loc = self.gl.get_uniform_location(program, name);
             self.gl.uniform_1_f32(loc.as_ref(), value);
         }
@@ -124,11 +131,8 @@ impl ManagedContext {
     /// If you're not sure what `transpose` means, simply make it false.
     pub fn set_uniform_mat2(&self, name: &str, value: &[f32; 4], transpose: bool) {
         unsafe {
-            let program = self
-                .current_pipeline.as_ref()
-                .expect("there should be an active pipeline")
-                .program
-                .program;
+            let program = self.current_program.as_ref().expect("there should be a bound pipeline").program;
+
             let loc = self.gl.get_uniform_location(program, name);
 
             self.gl
@@ -140,11 +144,8 @@ impl ManagedContext {
     /// If you're not sure what `transpose` means, simply make it false.
     pub fn set_uniform_mat3(&self, name: &str, value: &[f32; 9], transpose: bool) {
         unsafe {
-            let program = self
-                .current_pipeline.as_ref()
-                .expect("there should be an active pipeline")
-                .program
-                .program;
+            let program = self.current_program.as_ref().expect("there should be a bound pipeline").program;
+
             let loc = self.gl.get_uniform_location(program, name);
 
             self.gl
@@ -156,11 +157,8 @@ impl ManagedContext {
     /// If you're not sure what `transpose` means, simply make it false.
     pub fn set_uniform_mat4(&self, name: &str, value: &[f32; 16], transpose: bool) {
         unsafe {
-            let program = self
-                .current_pipeline.as_ref()
-                .expect("there should be an active pipeline")
-                .program
-                .program;
+            let program = self.current_program.as_ref().expect("there should be a bound pipeline").program;
+
             let loc = self.gl.get_uniform_location(program, name);
             self.gl
                 .uniform_matrix_4_f32_slice(loc.as_ref(), transpose, value);
@@ -199,17 +197,6 @@ impl ManagedContext {
         unsafe { self.gl.bind_buffer(target, buffer) };
     }
 
-    /// Bind the given vertex array to the context. The vertex array will be unbound after the closure is executed to prevent state contamination.
-    pub fn bind_vertex_array_with<F>(&mut self, va: impl VertexArraySource, func: F)
-    where
-        F: FnOnce(&mut ManagedContext),
-    {
-        // bind the vertex array
-        unsafe { self.gl.bind_vertex_array(Some(va.native_vertex_array())) };
-        func(self);
-        unsafe { self.gl.bind_vertex_array(None) };
-    }
-
     /// Render primitives using bound vertex data & index data.
     /// Calling `flush_state` before calling any draw\* functions is highly advised.
     pub fn draw_elements(&mut self, mode: DrawMode, count: u32, ty: DataType, offset: i32) {
@@ -219,11 +206,28 @@ impl ManagedContext {
         }
     }
 
-    /// Render primitives using bound vertex data
+    /// Render primitives using bound vertex data & index data, with instancing.
+    /// Calling `flush_state` before calling any draw\* functions is highly advised.
+    pub fn draw_elements_instanced(&mut self, mode: DrawMode, count: u32, ty: DataType, offset: i32, instances: u32) {
+        unsafe {
+            self.gl
+                .draw_elements_instanced(mode.to_gl(), count as i32, ty as u32, offset, instances as _);
+        }
+    }
+
+    /// Render primitives using bound vertex data.
     /// Calling `flush_state` before calling any draw\* functions is highly advised.
     pub fn draw_arrays(&mut self, mode: DrawMode, first: i32, count: i32) {
         unsafe {
             self.gl.draw_arrays(mode.to_gl(), first as i32, count);
+        }
+    }
+
+    /// Render primitives using bound vertex data, with instancing.
+    /// Calling `flush_state` before calling any draw\* functions is highly advised.
+    pub fn draw_arrays_instanced(&mut self, mode: DrawMode, first: i32, count: i32, instances: u32) {
+        unsafe {
+            self.gl.draw_arrays_instanced(mode.to_gl(), first as i32, count, instances as _);
         }
     }
 

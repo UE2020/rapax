@@ -28,7 +28,7 @@ impl BufferUsage {
 }
 
 /// The size of an index buffer's indices.
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 #[repr(u32)]
 pub enum DataType {
     SignedByte = 0x1400,
@@ -125,6 +125,7 @@ impl BufferHandle {
     /// Update data in the buffer's data storage.
     /// When updating the entire buffer, consider this function over `realloc`.
     /// This avoids the cost of reallocating the buffer object's data store.
+    /// 
     /// ## Panics
     /// The offset and the data being updated must lie inside the buffer.
     pub fn update(&self, offset: i32, data: &[u8]) {

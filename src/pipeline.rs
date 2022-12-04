@@ -2,6 +2,17 @@ use crate::*;
 
 use std::sync::Arc;
 
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub(crate) struct VertexAttributeDescriptor {
+    pub(crate) size: i32,
+    pub(crate) data_type: DataType,
+    pub(crate) normalized: bool,
+    pub(crate) stride: i32,
+    pub(crate) offset: i32,
+
+    pub(crate) divisor: u32,
+}
+
 /// Rendering state descriptor.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct RenderPipeline {
@@ -18,6 +29,8 @@ pub struct RenderPipeline {
 
     // pipline program
     pub(crate) program: Arc<ShaderProgram>,
+
+    pub(crate) vertex_attributes: Vec<VertexAttributeDescriptor>,
 }
 
 impl RenderPipeline {
@@ -32,6 +45,34 @@ impl RenderPipeline {
             color_write: [true, true, true, true],
 
             program: Arc::new(program),
+
+            vertex_attributes: vec![],
+        }
+    }
+
+    /// Add a vertex attribute to the pipeline.
+    pub fn with_vertex_attribute(
+        self,
+        size: i32,
+        data_type: DataType,
+        normalized: bool,
+        stride: i32,
+        offset: i32,
+        divisor: u32,
+    ) -> Self {
+        let mut vertex_attributes = self.vertex_attributes;
+        vertex_attributes.push(VertexAttributeDescriptor {
+            size,
+            data_type,
+            normalized,
+            stride,
+            offset,
+            divisor
+        });
+
+        Self {
+            vertex_attributes,
+            ..self
         }
     }
 

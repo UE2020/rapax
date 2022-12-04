@@ -27,7 +27,6 @@ fn main() {
     let max_samples = unsafe { gl.get_parameter_i32(glow::MAX_SAMPLES) };
     println!("Max samples detected: {}", max_samples);
     let mut ctx = rapax::ManagedContext::new(gl);
-    let va = rapax::VertexArrayObject::new(&mut ctx);
     let program = rapax::ShaderProgram::new(
         &mut ctx,
         r#"#version 410
@@ -40,7 +39,7 @@ fn main() {
         uniform mat4 uMVP;
         void main() {
             vert = verts[gl_VertexID];
-            gl_Position = uMVP * vec4(vert, 0.0, 1.0);
+            gl_Position = uMVP * vec4(vert + vec2(gl_InstanceID * 50.0), 0.0, 1.0);
         }"#,
         r#"#version 410
         precision mediump float;
@@ -77,14 +76,12 @@ fn main() {
                 ctx.set_uniform_float4("uColor", &[1.0, 0.0, 0.2, 1.0]);
 
                 let view = ortho(0.0, size.width as f32, size.height as f32, 0.0, 0.0, 1.0);
-                let model: Matrix4<f32> = Matrix4::from_translation(vec3(200.0, 200.0, 0.0))
+                let model: Matrix4<f32> = Matrix4::from_translation(vec3(500.0, 500.0, 0.0))
                     * Matrix4::from_angle_z(Rad(rotation));
                 let mvp = view * model;
                 ctx.set_uniform_mat4("uMVP", &mvp.as_ref(), false);
-                
-                ctx.bind_vertex_array_with(&va, |ctx| {
-                    ctx.draw_arrays(rapax::DrawMode::Triangles, 0, 3);
-                });
+
+                ctx.draw_arrays_instanced(rapax::DrawMode::Triangles, 0, 3, 10);
                 window.swap_buffers().unwrap();
             }
             Event::WindowEvent { ref event, .. } => match event {
