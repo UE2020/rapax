@@ -4,7 +4,8 @@ pub use shader::*;
 mod ctx;
 pub use ctx::*;
 
-pub mod blend;
+mod blend;
+pub use blend::*;
 
 mod buffer;
 pub use buffer::*;

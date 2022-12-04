@@ -21,80 +21,15 @@ impl ShaderProgram {
             gl: ctx.gl.clone(),
         }
     }
+}
 
-    /// Set a float4 uniform on the shader program.
-    pub fn set_uniform_float4(&self, name: &str, value: &[f32; 4]) {
-        unsafe {
-            self.gl.use_program(Some(self.program));
-            let loc = self.gl.get_uniform_location(self.program, name);
-            self.gl
-                .uniform_4_f32(loc.as_ref(), value[0], value[1], value[2], value[3])
-        }
-    }
-
-    /// Set a float3 uniform on the shader program.
-    pub fn set_uniform_float3(&self, name: &str, value: &[f32; 3]) {
-        unsafe {
-            self.gl.use_program(Some(self.program));
-            let loc = self.gl.get_uniform_location(self.program, name);
-            self.gl
-                .uniform_3_f32(loc.as_ref(), value[0], value[1], value[2])
-        }
-    }
-
-    /// Set a float3 uniform on the shader program.
-    pub fn set_uniform_float2(&self, name: &str, value: &[f32; 2]) {
-        unsafe {
-            self.gl.use_program(Some(self.program));
-            let loc = self.gl.get_uniform_location(self.program, name);
-            self.gl.uniform_2_f32(loc.as_ref(), value[0], value[1])
-        }
-    }
-
-    /// Set a float1 uniform on the shader program.
-    pub fn set_uniform_float1(&self, name: &str, value: f32) {
-        unsafe {
-            self.gl.use_program(Some(self.program));
-            let loc = self.gl.get_uniform_location(self.program, name);
-            self.gl.uniform_1_f32(loc.as_ref(), value)
-        }
-    }
-
-    /// Set a mat2 uniform on the shader program.
-    /// If you're not sure what `transpose` means, simply make it false.
-    pub fn set_uniform_mat2(&self, name: &str, value: &[f32; 4], transpose: bool) {
-        unsafe {
-            self.gl.use_program(Some(self.program));
-            let loc = self.gl.get_uniform_location(self.program, name);
-
-            self.gl
-                .uniform_matrix_2_f32_slice(loc.as_ref(), transpose, value)
-        }
-    }
-
-    /// Set a mat3 uniform on the shader program.
-    /// If you're not sure what `transpose` means, simply make it false.
-    pub fn set_uniform_mat3(&self, name: &str, value: &[f32; 9], transpose: bool) {
-        unsafe {
-            self.gl.use_program(Some(self.program));
-            let loc = self.gl.get_uniform_location(self.program, name);
-
-            self.gl
-                .uniform_matrix_3_f32_slice(loc.as_ref(), transpose, value)
-        }
-    }
-
-    /// Set a mat4 uniform on the shader program.
-    /// If you're not sure what `transpose` means, simply make it false.
-    pub fn set_uniform_mat4(&self, name: &str, value: &[f32; 16], transpose: bool) {
-        unsafe {
-            self.gl.use_program(Some(self.program));
-            let loc = self.gl.get_uniform_location(self.program, name);
-            self.gl
-                .uniform_matrix_4_f32_slice(loc.as_ref(), transpose, value)
-        }
+impl PartialEq for ShaderProgram {
+    fn eq(&self, other: &Self) -> bool {
+        self.program == other.program
     }
 }
+
+impl Eq for ShaderProgram {}
 
 impl ProgramSource for &ShaderProgram {
     fn native_program(&self) -> NativeProgram {

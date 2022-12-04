@@ -70,15 +70,18 @@ fn main() {
                 let size = window.window().inner_size();
 
                 rotation += 0.01;
-                pipeline.program().set_uniform_float4("uColor", &[1.0, 0.0, 0.2, 1.0]);
+
+                ctx.clear(rapax::COLOR_BUFFER_BIT);
+
+                ctx.set_pipeline(&pipeline);
+                ctx.set_uniform_float4("uColor", &[1.0, 0.0, 0.2, 1.0]);
 
                 let view = ortho(0.0, size.width as f32, size.height as f32, 0.0, 0.0, 1.0);
                 let model: Matrix4<f32> = Matrix4::from_translation(vec3(200.0, 200.0, 0.0))
                     * Matrix4::from_angle_z(Rad(rotation));
                 let mvp = view * model;
-                pipeline.program().set_uniform_mat4("uMVP", &mvp.as_ref(), false);
-
-                ctx.clear(rapax::COLOR_BUFFER_BIT);
+                ctx.set_uniform_mat4("uMVP", &mvp.as_ref(), false);
+                
                 ctx.bind_vertex_array_with(&va, |ctx| {
                     ctx.draw_arrays(rapax::DrawMode::Triangles, 0, 3);
                 });

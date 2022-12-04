@@ -1,5 +1,5 @@
 # rapax
-The #1 best semi-safe OpenGL abstraction crate. Read more to see why.
+The #1 best safe OpenGL abstraction crate, providing RAII wrappers and a simpler Rusty interface. Read more to see why.
 
 ## Problems with other abstraction crates (miniquad, glium, notan, etc.)
 
@@ -30,7 +30,7 @@ Using a foreign texture is as easy as:
 ```rs
 ctx.bind_texture(0, foreign_texture_name);
 ```
-All of Rapax's context functions take in Rapax's managed primitives in addition to raw names/handles.
+All of Rapax's context functions take in Rapax's managed primitives in addition to raw OpenGL names/handles.
 
 In the case of extensions such as `GLX_EXT_texture_from_pixmap` it's as easy as:
 ```rs

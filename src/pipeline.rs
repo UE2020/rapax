@@ -1,8 +1,9 @@
-use crate::blend::*;
 use crate::*;
 
+use std::sync::Arc;
+
 /// Rendering state descriptor.
-#[derive(Debug)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct RenderPipeline {
     // blend state
     pub(crate) blend_enabled: bool,
@@ -16,10 +17,11 @@ pub struct RenderPipeline {
     pub(crate) color_write: [bool; 4],
 
     // pipline program
-    pub(crate) program: ShaderProgram,
+    pub(crate) program: Arc<ShaderProgram>,
 }
 
 impl RenderPipeline {
+    /// Create a new pipeline using the given shader program.
     pub fn new(program: ShaderProgram) -> Self {
         Self {
             blend_enabled: false,
@@ -29,10 +31,11 @@ impl RenderPipeline {
             depth_write: false,
             color_write: [true, true, true, true],
 
-            program,
+            program: Arc::new(program),
         }
     }
 
+    /// Set the blend state.
     pub fn with_blend(self, enabled: bool) -> Self {
         Self {
             blend_enabled: enabled,
@@ -40,6 +43,7 @@ impl RenderPipeline {
         }
     }
 
+    /// Set the blend function.
     pub fn with_blend_func(self, src: BlendFactor, dst: BlendFactor) -> Self {
         Self {
             blend_func: (src as u32, dst as u32),
@@ -47,6 +51,7 @@ impl RenderPipeline {
         }
     }
 
+    /// Set the depth state.
     pub fn with_depth(self, enabled: bool) -> Self {
         Self {
             depth_enabled: enabled,
@@ -54,6 +59,7 @@ impl RenderPipeline {
         }
     }
 
+    /// Set the depth write state.
     pub fn with_depth_write(self, enabled: bool) -> Self {
         Self {
             depth_write: enabled,
@@ -61,6 +67,7 @@ impl RenderPipeline {
         }
     }
 
+    /// Set the color write state, per channel.
     pub fn with_color_write(self, r: bool, g: bool, b: bool, a: bool) -> Self {
         Self {
             color_write: [r, g, b, a],
@@ -68,6 +75,7 @@ impl RenderPipeline {
         }
     }
 
+    /// Get a reference to the shader program. Useful for setting uniforms.
     pub fn program(&self) -> &ShaderProgram {
         &self.program
     }

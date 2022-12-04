@@ -1,5 +1,3 @@
-use crate::blend::BlendFactor;
-
 use super::*;
 
 use std::{default, sync::Arc};
@@ -26,31 +24,31 @@ impl DrawMode {
 #[derive(Debug)]
 pub struct ManagedContext {
     pub(crate) gl: Arc<glow::Context>,
+    current_pipeline: Option<RenderPipeline>,
 }
 
 impl ManagedContext {
     pub fn new(gl: Arc<glow::Context>) -> Self {
         Self {
             gl,
+            current_pipeline: None,
         }
     }
 
-    pub fn set_pipeline(&self, pipeline: &RenderPipeline) {
-        // Program must be reset under ALL CIRCUMSTANCES
+    pub fn set_pipeline(&mut self, pipeline: &RenderPipeline) {        
         unsafe {
             if pipeline.blend_enabled {
                 self.gl.enable(BLEND);
+                self.gl
+                    .blend_func(pipeline.blend_func.0, pipeline.blend_func.1);
             } else {
                 self.gl.disable(BLEND);
             }
 
-            self.gl
-                .blend_func(pipeline.blend_func.0, pipeline.blend_func.1);
-
             if pipeline.depth_enabled {
-                self.gl.disable(DEPTH_TEST);
-            } else {
                 self.gl.enable(DEPTH_TEST);
+            } else {
+                self.gl.disable(DEPTH_TEST);
             }
 
             self.gl.color_mask(
@@ -61,6 +59,111 @@ impl ManagedContext {
             );
 
             self.gl.depth_mask(pipeline.depth_write);
+
+            self.gl.use_program(Some(pipeline.program.program));
+        }
+
+        self.current_pipeline = Some(pipeline.clone());
+    }
+
+    /// Set a float4 uniform on the currently applied pipeline.
+    pub fn set_uniform_float4(&self, name: &str, value: &[f32; 4]) {
+        unsafe {
+            let program = self
+                .current_pipeline.as_ref()
+                .expect("there should be an active pipeline")
+                .program
+                .program;
+            let loc = self.gl.get_uniform_location(program, name);
+            self.gl
+                .uniform_4_f32(loc.as_ref(), value[0], value[1], value[2], value[3]);
+        }
+    }
+
+    /// Set a float3 uniform on the currently applied pipeline.
+    pub fn set_uniform_float3(&self, name: &str, value: &[f32; 3]) {
+        unsafe {
+            let program = self
+                .current_pipeline.as_ref()
+                .expect("there should be an active pipeline")
+                .program
+                .program;
+            let loc = self.gl.get_uniform_location(program, name);
+            self.gl
+                .uniform_3_f32(loc.as_ref(), value[0], value[1], value[2]);
+        }
+    }
+
+    /// Set a float3 uniform on the currently applied pipeline.
+    pub fn set_uniform_float2(&self, name: &str, value: &[f32; 2]) {
+        unsafe {
+            let program = self
+                .current_pipeline.as_ref()
+                .expect("there should be an active pipeline")
+                .program
+                .program;
+            let loc = self.gl.get_uniform_location(program, name);
+            self.gl.uniform_2_f32(loc.as_ref(), value[0], value[1]);
+        }
+    }
+
+    /// Set a float1 uniform on the currently applied pipeline.
+    pub fn set_uniform_float1(&self, name: &str, value: f32) {
+        unsafe {
+            let program = self
+                .current_pipeline.as_ref()
+                .expect("there should be an active pipeline")
+                .program
+                .program;
+            let loc = self.gl.get_uniform_location(program, name);
+            self.gl.uniform_1_f32(loc.as_ref(), value);
+        }
+    }
+
+    /// Set a mat2 uniform on the currently applied pipeline.
+    /// If you're not sure what `transpose` means, simply make it false.
+    pub fn set_uniform_mat2(&self, name: &str, value: &[f32; 4], transpose: bool) {
+        unsafe {
+            let program = self
+                .current_pipeline.as_ref()
+                .expect("there should be an active pipeline")
+                .program
+                .program;
+            let loc = self.gl.get_uniform_location(program, name);
+
+            self.gl
+                .uniform_matrix_2_f32_slice(loc.as_ref(), transpose, value);
+        }
+    }
+
+    /// Set a mat3 uniform on the currently applied pipeline.
+    /// If you're not sure what `transpose` means, simply make it false.
+    pub fn set_uniform_mat3(&self, name: &str, value: &[f32; 9], transpose: bool) {
+        unsafe {
+            let program = self
+                .current_pipeline.as_ref()
+                .expect("there should be an active pipeline")
+                .program
+                .program;
+            let loc = self.gl.get_uniform_location(program, name);
+
+            self.gl
+                .uniform_matrix_3_f32_slice(loc.as_ref(), transpose, value);
+        }
+    }
+
+    /// Set a mat4 uniform on the currently applied pipeline.
+    /// If you're not sure what `transpose` means, simply make it false.
+    pub fn set_uniform_mat4(&self, name: &str, value: &[f32; 16], transpose: bool) {
+        unsafe {
+            let program = self
+                .current_pipeline.as_ref()
+                .expect("there should be an active pipeline")
+                .program
+                .program;
+            let loc = self.gl.get_uniform_location(program, name);
+            self.gl
+                .uniform_matrix_4_f32_slice(loc.as_ref(), transpose, value);
         }
     }
 
@@ -124,7 +227,7 @@ impl ManagedContext {
         }
     }
 
-    /// Clear buffers
+    /// Clear buffers.
     /// Calling `flush_state` is highly advised before calling this function.
     pub fn clear(&mut self, mask: u32) {
         unsafe {
@@ -132,10 +235,12 @@ impl ManagedContext {
         }
     }
 
+    /// Set the clear color.
     pub fn set_clear_color(&mut self, color: [f32; 4]) {
         unsafe { self.gl.clear_color(color[0], color[1], color[2], color[3]) };
     }
 
+    /// Set the viewport position & dimensions.
     pub fn set_viewport(&mut self, x: i32, y: i32, w: i32, h: i32) {
         unsafe { self.gl.viewport(x, y, w, h) };
     }

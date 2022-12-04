@@ -1,12 +1,14 @@
 use super::*;
 use std::sync::Arc;
 
+/// A handle to a vertex array.
 pub struct VertexArrayObject {
     vao: NativeVertexArray,
     gl: Arc<Context>,
 }
 
 impl VertexArrayObject {
+    /// Initialize a new vertex array.
     pub fn new(ctx: &mut ManagedContext) -> Self {
         let vao = unsafe { ctx.gl.create_vertex_array().unwrap() };
         Self {
@@ -15,6 +17,7 @@ impl VertexArrayObject {
         }
     }
 
+    /// Add a vertex attribute.
     pub fn attrib_pointer(
         &self,
         index: u32,
@@ -38,6 +41,7 @@ impl VertexArrayObject {
         }
     }
 
+    /// Enable a vertex attribute using its index.
     pub fn enable_attrib(&self, ctx: &mut ManagedContext, index: u32) {
         unsafe {
             self.gl.bind_vertex_array(Some(self.vao));
