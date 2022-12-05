@@ -67,7 +67,7 @@ impl RenderPipeline {
             normalized,
             stride,
             offset,
-            divisor
+            divisor,
         });
 
         Self {

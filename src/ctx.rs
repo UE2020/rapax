@@ -25,7 +25,9 @@ impl DrawMode {
 pub struct ManagedContext {
     pub(crate) gl: Arc<glow::Context>,
     current_program: Option<Arc<ShaderProgram>>,
-    default_vao: NativeVertexArray
+    default_vao: NativeVertexArray,
+
+    top_attribute: u32,
 }
 
 impl ManagedContext {
@@ -33,12 +35,13 @@ impl ManagedContext {
         Self {
             gl: gl.clone(),
             current_program: None,
-            default_vao: unsafe { gl.create_vertex_array().expect("vertex array is required") }
+            default_vao: unsafe { gl.create_vertex_array().expect("vertex array is required") },
+            top_attribute: 0,
         }
     }
 
     /// Apply a rendering pipline to the context. There must be a pipeline applied in order for the `set_uniform_*` series of functions to work.
-    pub fn set_pipeline(&mut self, pipeline: &RenderPipeline) {        
+    pub fn set_pipeline(&mut self, pipeline: &RenderPipeline) {
         unsafe {
             if pipeline.blend_enabled {
                 self.gl.enable(BLEND);
@@ -66,10 +69,10 @@ impl ManagedContext {
             self.gl.use_program(Some(pipeline.program.program));
 
             self.gl.bind_vertex_array(Some(self.default_vao));
-            // setup attributes
-            for (index, attribute) in pipeline.vertex_attributes.iter().enumerate() {
+            let mut index = 0;
+            for attribute in pipeline.vertex_attributes.iter() {
                 self.gl.vertex_attrib_pointer_f32(
-                    index as _,
+                    index,
                     attribute.size,
                     attribute.data_type as _,
                     attribute.normalized,
@@ -77,10 +80,19 @@ impl ManagedContext {
                     attribute.offset,
                 );
 
-                self.gl.vertex_attrib_divisor(index as u32, attribute.divisor);
+                self.gl.vertex_attrib_divisor(index, attribute.divisor);
 
-                self.gl.enable_vertex_attrib_array(index as _);
+                self.gl.enable_vertex_attrib_array(index);
+
+                index += 1;
             }
+
+            for unused in index..self.top_attribute {
+                // TODO: determine whether this is required
+                self.gl.disable_vertex_attrib_array(unused);
+            }
+
+            self.top_attribute = index;
         }
 
         self.current_program = Some(pipeline.program.clone());
@@ -89,7 +101,11 @@ impl ManagedContext {
     /// Set a float4 uniform on the currently applied pipeline.
     pub fn set_uniform_float4(&self, name: &str, value: &[f32; 4]) {
         unsafe {
-            let program = self.current_program.as_ref().expect("there should be a bound pipeline").program;
+            let program = self
+                .current_program
+                .as_ref()
+                .expect("there should be a bound pipeline")
+                .program;
             let loc = self.gl.get_uniform_location(program, name);
             self.gl
                 .uniform_4_f32(loc.as_ref(), value[0], value[1], value[2], value[3]);
@@ -99,7 +115,11 @@ impl ManagedContext {
     /// Set a float3 uniform on the currently applied pipeline.
     pub fn set_uniform_float3(&self, name: &str, value: &[f32; 3]) {
         unsafe {
-            let program = self.current_program.as_ref().expect("there should be a bound pipeline").program;
+            let program = self
+                .current_program
+                .as_ref()
+                .expect("there should be a bound pipeline")
+                .program;
 
             let loc = self.gl.get_uniform_location(program, name);
             self.gl
@@ -110,7 +130,11 @@ impl ManagedContext {
     /// Set a float3 uniform on the currently applied pipeline.
     pub fn set_uniform_float2(&self, name: &str, value: &[f32; 2]) {
         unsafe {
-            let program = self.current_program.as_ref().expect("there should be a bound pipeline").program;
+            let program = self
+                .current_program
+                .as_ref()
+                .expect("there should be a bound pipeline")
+                .program;
 
             let loc = self.gl.get_uniform_location(program, name);
             self.gl.uniform_2_f32(loc.as_ref(), value[0], value[1]);
@@ -120,7 +144,11 @@ impl ManagedContext {
     /// Set a float1 uniform on the currently applied pipeline.
     pub fn set_uniform_float1(&self, name: &str, value: f32) {
         unsafe {
-            let program = self.current_program.as_ref().expect("there should be a bound pipeline").program;
+            let program = self
+                .current_program
+                .as_ref()
+                .expect("there should be a bound pipeline")
+                .program;
 
             let loc = self.gl.get_uniform_location(program, name);
             self.gl.uniform_1_f32(loc.as_ref(), value);
@@ -131,7 +159,11 @@ impl ManagedContext {
     /// If you're not sure what `transpose` means, simply make it false.
     pub fn set_uniform_mat2(&self, name: &str, value: &[f32; 4], transpose: bool) {
         unsafe {
-            let program = self.current_program.as_ref().expect("there should be a bound pipeline").program;
+            let program = self
+                .current_program
+                .as_ref()
+                .expect("there should be a bound pipeline")
+                .program;
 
             let loc = self.gl.get_uniform_location(program, name);
 
@@ -144,7 +176,11 @@ impl ManagedContext {
     /// If you're not sure what `transpose` means, simply make it false.
     pub fn set_uniform_mat3(&self, name: &str, value: &[f32; 9], transpose: bool) {
         unsafe {
-            let program = self.current_program.as_ref().expect("there should be a bound pipeline").program;
+            let program = self
+                .current_program
+                .as_ref()
+                .expect("there should be a bound pipeline")
+                .program;
 
             let loc = self.gl.get_uniform_location(program, name);
 
@@ -157,7 +193,11 @@ impl ManagedContext {
     /// If you're not sure what `transpose` means, simply make it false.
     pub fn set_uniform_mat4(&self, name: &str, value: &[f32; 16], transpose: bool) {
         unsafe {
-            let program = self.current_program.as_ref().expect("there should be a bound pipeline").program;
+            let program = self
+                .current_program
+                .as_ref()
+                .expect("there should be a bound pipeline")
+                .program;
 
             let loc = self.gl.get_uniform_location(program, name);
             self.gl
@@ -208,10 +248,22 @@ impl ManagedContext {
 
     /// Render primitives using bound vertex data & index data, with instancing.
     /// Calling `flush_state` before calling any draw\* functions is highly advised.
-    pub fn draw_elements_instanced(&mut self, mode: DrawMode, count: u32, ty: DataType, offset: i32, instances: u32) {
+    pub fn draw_elements_instanced(
+        &mut self,
+        mode: DrawMode,
+        count: u32,
+        ty: DataType,
+        offset: i32,
+        instances: u32,
+    ) {
         unsafe {
-            self.gl
-                .draw_elements_instanced(mode.to_gl(), count as i32, ty as u32, offset, instances as _);
+            self.gl.draw_elements_instanced(
+                mode.to_gl(),
+                count as i32,
+                ty as u32,
+                offset,
+                instances as _,
+            );
         }
     }
 
@@ -225,9 +277,16 @@ impl ManagedContext {
 
     /// Render primitives using bound vertex data, with instancing.
     /// Calling `flush_state` before calling any draw\* functions is highly advised.
-    pub fn draw_arrays_instanced(&mut self, mode: DrawMode, first: i32, count: i32, instances: u32) {
+    pub fn draw_arrays_instanced(
+        &mut self,
+        mode: DrawMode,
+        first: i32,
+        count: i32,
+        instances: u32,
+    ) {
         unsafe {
-            self.gl.draw_arrays_instanced(mode.to_gl(), first as i32, count, instances as _);
+            self.gl
+                .draw_arrays_instanced(mode.to_gl(), first as i32, count, instances as _);
         }
     }
 
