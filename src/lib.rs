@@ -13,6 +13,7 @@ pub use buffer::*;
 mod pipeline;
 pub use pipeline::*;
 
-use glow::*;
+mod clearflags;
+pub use clearflags::*;
 
-pub use glow::{COLOR_BUFFER_BIT, DEPTH_BUFFER_BIT};
+use glow::*;

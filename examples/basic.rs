@@ -70,18 +70,19 @@ fn main() {
 
                 rotation += 0.01;
 
-                ctx.clear(rapax::COLOR_BUFFER_BIT);
+                ctx.clear(rapax::ClearFlags::COLOR);
 
-                ctx.set_pipeline(&pipeline);
-                ctx.set_uniform_float4("uColor", &[1.0, 0.0, 0.2, 1.0]);
+                ctx.with_pipeline(&pipeline, |dctx| {
+					dctx.set_uniform_float4("uColor", &[1.0, 0.0, 0.2, 1.0]);
 
-                let view = ortho(0.0, size.width as f32, size.height as f32, 0.0, 0.0, 1.0);
-                let model: Matrix4<f32> = Matrix4::from_translation(vec3(500.0, 500.0, 0.0))
-                    * Matrix4::from_angle_z(Rad(rotation));
-                let mvp = view * model;
-                ctx.set_uniform_mat4("uMVP", &mvp.as_ref(), false);
-
-                ctx.draw_arrays_instanced(rapax::DrawMode::Triangles, 0, 3, 10);
+					let view = ortho(0.0, size.width as f32, size.height as f32, 0.0, 0.0, 1.0);
+					let model: Matrix4<f32> = Matrix4::from_translation(vec3(500.0, 500.0, 0.0))
+						* Matrix4::from_angle_z(Rad(rotation));
+					let mvp = view * model;
+					dctx.set_uniform_mat4("uMVP", &mvp.as_ref(), false);
+	
+					dctx.draw_arrays_instanced(rapax::DrawMode::Triangles, 0, 3, 10);
+				});
                 window.swap_buffers().unwrap();
             }
             Event::WindowEvent { ref event, .. } => match event {

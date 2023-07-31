@@ -5,10 +5,10 @@ use std::sync::Arc;
 /// The two buffer types supported by rapax.
 /// `ArrayBuffer` corresponds to `GL_ARRAY_BUFFER` and `ElementArrayBuffer` corresponds to `GL_ELEMENT_ARRAY_BUFFER`.
 #[derive(Debug, Clone, Copy)]
-#[repr(u8)]
+#[repr(u32)]
 pub enum BufferType {
-    ArrayBuffer,
-    ElementArrayBuffer,
+    ArrayBuffer = ARRAY_BUFFER,
+    ElementArrayBuffer = ELEMENT_ARRAY_BUFFER,
 }
 
 /// The buffer usage flag passed when allocating buffer data using `glBufferData`.
@@ -60,9 +60,9 @@ pub struct BufferHandle {
 
 impl BufferHandle {
     /// Create an array buffer, filling it with the given data slice.
-    pub fn array_buffer(ctx: &mut ManagedContext, usage: BufferUsage, data: &[u8]) -> Self {
+    pub fn array_buffer(ctx: &mut ManagedContext, usage: BufferUsage, data: &[u8]) -> Result<Self, String> {
         let buffer = unsafe {
-            let buffer = ctx.gl.create_buffer().unwrap();
+            let buffer = ctx.gl.create_buffer()?;
             ctx.gl.bind_buffer(ARRAY_BUFFER, Some(buffer));
             ctx.gl
                 .buffer_data_u8_slice(ARRAY_BUFFER, data, usage.to_gl());
@@ -70,18 +70,18 @@ impl BufferHandle {
             buffer
         };
 
-        Self {
+        Ok(Self {
             buffer,
             gl: ctx.gl.clone(),
             ty: BufferType::ArrayBuffer,
             capacity: data.len(),
-        }
+        })
     }
 
     /// Create an index buffer, filling it with the given data slice.
-    pub fn index_buffer(ctx: &mut ManagedContext, usage: BufferUsage, data: &[u8]) -> Self {
+    pub fn index_buffer(ctx: &mut ManagedContext, usage: BufferUsage, data: &[u8]) -> Result<Self, String> {
         let buffer = unsafe {
-            let buffer = ctx.gl.create_buffer().unwrap();
+            let buffer = ctx.gl.create_buffer()?;
             ctx.gl.bind_buffer(ELEMENT_ARRAY_BUFFER, Some(buffer));
             ctx.gl
                 .buffer_data_u8_slice(ELEMENT_ARRAY_BUFFER, data, usage.to_gl());
@@ -89,12 +89,12 @@ impl BufferHandle {
             buffer
         };
 
-        Self {
+        Ok(Self {
             buffer,
             gl: ctx.gl.clone(),
             ty: BufferType::ElementArrayBuffer,
             capacity: data.len(),
-        }
+        })
     }
 
     /// The capacity of the buffer, in bytes.
@@ -104,7 +104,7 @@ impl BufferHandle {
 
     /// Reallocate the buffer's underlying storage.
     pub fn realloc(&mut self, usage: BufferUsage, data: &[u8]) {
-        match self.buffer_type() {
+        match self.ty() {
             BufferType::ArrayBuffer => unsafe {
                 self.gl.bind_buffer(ARRAY_BUFFER, Some(self.buffer));
 
@@ -134,7 +134,7 @@ impl BufferHandle {
             "out of bounds write!"
         );
 
-        match self.buffer_type() {
+        match self.ty() {
             BufferType::ArrayBuffer => unsafe {
                 self.gl.bind_buffer(ARRAY_BUFFER, Some(self.buffer));
                 self.gl.buffer_sub_data_u8_slice(ARRAY_BUFFER, offset, data);
@@ -148,7 +148,7 @@ impl BufferHandle {
     }
 
     /// The buffer type, either `ArrayBuffer` or `ElementArrayBuffer`.
-    pub fn buffer_type(&self) -> BufferType {
+    pub fn ty(&self) -> BufferType {
         self.ty
     }
 }
@@ -159,18 +159,19 @@ impl Drop for BufferHandle {
     }
 }
 
-impl BufferSource for &BufferHandle {
-    fn native_buffer(&self) -> NativeBuffer {
-        self.buffer
+impl BindableBuffer for &BufferHandle {
+    unsafe fn bind(&self, target: u32, gl: &Context) {
+		assert_eq!(target, self.ty() as _, "Attempted to bind buffer to invalid binding point");
+        gl.bind_buffer(target, Some(self.buffer));
     }
 }
 
-impl BufferSource for NativeBuffer {
-    fn native_buffer(&self) -> NativeBuffer {
-        *self
+impl BindableBuffer for NativeBuffer {
+    unsafe fn bind(&self, target: u32, gl: &Context) {
+        gl.bind_buffer(target, Some(*self));
     }
 }
 
-pub trait BufferSource {
-    fn native_buffer(&self) -> NativeBuffer;
+pub trait BindableBuffer {
+    unsafe fn bind(&self, target: u32, gl: &Context);
 }
