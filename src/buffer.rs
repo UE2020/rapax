@@ -60,7 +60,11 @@ pub struct BufferHandle {
 
 impl BufferHandle {
     /// Create an array buffer, filling it with the given data slice.
-    pub fn array_buffer(ctx: &mut ManagedContext, usage: BufferUsage, data: &[u8]) -> Result<Self, String> {
+    pub fn array_buffer(
+        ctx: &mut ManagedContext,
+        usage: BufferUsage,
+        data: &[u8],
+    ) -> Result<Self, String> {
         let buffer = unsafe {
             let buffer = ctx.gl.create_buffer()?;
             ctx.gl.bind_buffer(ARRAY_BUFFER, Some(buffer));
@@ -79,7 +83,11 @@ impl BufferHandle {
     }
 
     /// Create an index buffer, filling it with the given data slice.
-    pub fn index_buffer(ctx: &mut ManagedContext, usage: BufferUsage, data: &[u8]) -> Result<Self, String> {
+    pub fn index_buffer(
+        ctx: &mut ManagedContext,
+        usage: BufferUsage,
+        data: &[u8],
+    ) -> Result<Self, String> {
         let buffer = unsafe {
             let buffer = ctx.gl.create_buffer()?;
             ctx.gl.bind_buffer(ELEMENT_ARRAY_BUFFER, Some(buffer));
@@ -161,7 +169,11 @@ impl Drop for BufferHandle {
 
 impl BindableBuffer for &BufferHandle {
     unsafe fn bind(&self, target: u32, gl: &Context) {
-		assert_eq!(target, self.ty() as _, "Attempted to bind buffer to invalid binding point");
+        assert_eq!(
+            target,
+            self.ty() as _,
+            "Attempted to bind buffer to invalid binding point"
+        );
         gl.bind_buffer(target, Some(self.buffer));
     }
 }

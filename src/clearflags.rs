@@ -1,5 +1,5 @@
-use bitflags::bitflags;
 use super::*;
+use bitflags::bitflags;
 
 bitflags! {
     #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]

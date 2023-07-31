@@ -29,7 +29,7 @@ Rapax addresses these problems by making it very easy to access internal OpenGL 
 Using a foreign texture is as easy as:
 ```rs
 ctx.apply_textures(&[
-	(foreign_texture_name, "uTexture"),
+    (foreign_texture_name, "uTexture"),
 ]);
 ```
 All of Rapax's context functions take in Rapax's managed primitives in addition to raw OpenGL names/handles. This is controlled using the `Bindable*` series of traits.
@@ -39,24 +39,24 @@ In the case of extensions such as `GLX_EXT_texture_from_pixmap` it's as easy as:
 struct Pixmap(...);
 
 impl rapax::BindableTexture for Pixmap {
-	unsafe fn bind(&self) {
-		glXBindTexImageEXT(...);
-	}
+    unsafe fn bind(&self) {
+        glXBindTexImageEXT(...);
+    }
 }
 
 impl Pixmap {
-	unsafe fn release(&self) {
-		glXReleaseTexImageEXT(...);
-	}
+    unsafe fn release(&self) {
+        glXReleaseTexImageEXT(...);
+    }
 }
 
 ctx.with_pipeline(&some_pipeline, |rctx| {
-	let foreign_texture_name = Pixmap(...);
-	rctx.apply_textures(&[
-		(foreign_texture_name, "uTexture"),
-	]);
-	rctx.draw_elements(rapax::DrawMode::Triangles, 100, DataType::UnsignedShort, 0);
-	unsafe { foreign_texture_name.release() };
+    let foreign_texture_name = Pixmap(...);
+    rctx.apply_textures(&[
+        (foreign_texture_name, "uTexture"),
+    ]);
+    rctx.draw_elements(rapax::DrawMode::Triangles, 100, DataType::UnsignedShort, 0);
+    unsafe { foreign_texture_name.release() };
 })
 ```
 Rapax does not cache any internal GL state, so there is no way to put the context into an unusable state by binding textures/programs/buffers manually.

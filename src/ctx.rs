@@ -65,32 +65,56 @@ impl ManagedContext {
 
             self.gl.bind_vertex_array(Some(self.default_vao));
 
-			if pipeline.scissor_enabled {
-				self.gl.enable(SCISSOR_TEST);
-			} else {
-				self.gl.disable(SCISSOR_TEST);
-			}
+            if pipeline.scissor_enabled {
+                self.gl.enable(SCISSOR_TEST);
+            } else {
+                self.gl.disable(SCISSOR_TEST);
+            }
 
-			match &pipeline.stencil_state {
-				Some(stencil) => {
-					self.gl.enable(STENCIL_TEST);
-					self.gl.stencil_mask_separate(FRONT, stencil.front_mask);
-					self.gl.stencil_mask_separate(BACK, stencil.back_mask);
-					self.gl.stencil_func_separate(FRONT, stencil.front.func as _, stencil.front.sref, stencil.front.mask);
-					self.gl.stencil_func_separate(BACK, stencil.back.func as _, stencil.back.sref, stencil.back.mask);
-					self.gl.stencil_op_separate(FRONT, stencil.front_stencil_op[0] as _, stencil.front_stencil_op[1] as _, stencil.front_stencil_op[2] as _);
-					self.gl.stencil_op_separate(BACK, stencil.back_stencil_op[0] as _, stencil.back_stencil_op[1] as _, stencil.back_stencil_op[2] as _)
-				}
-				None => self.gl.disable(STENCIL_TEST)
-			}
+            match &pipeline.stencil_state {
+                Some(stencil) => {
+                    self.gl.enable(STENCIL_TEST);
+                    self.gl.stencil_mask_separate(FRONT, stencil.front_mask);
+                    self.gl.stencil_mask_separate(BACK, stencil.back_mask);
+                    self.gl.stencil_func_separate(
+                        FRONT,
+                        stencil.front.func as _,
+                        stencil.front.sref,
+                        stencil.front.mask,
+                    );
+                    self.gl.stencil_func_separate(
+                        BACK,
+                        stencil.back.func as _,
+                        stencil.back.sref,
+                        stencil.back.mask,
+                    );
+                    self.gl.stencil_op_separate(
+                        FRONT,
+                        stencil.front_stencil_op[0] as _,
+                        stencil.front_stencil_op[1] as _,
+                        stencil.front_stencil_op[2] as _,
+                    );
+                    self.gl.stencil_op_separate(
+                        BACK,
+                        stencil.back_stencil_op[0] as _,
+                        stencil.back_stencil_op[1] as _,
+                        stencil.back_stencil_op[2] as _,
+                    )
+                }
+                None => self.gl.disable(STENCIL_TEST),
+            }
         }
 
-		draw_cb(Drawable { ctx: self, pipeline, current_program: pipeline.program.clone() });
+        draw_cb(Drawable {
+            ctx: self,
+            pipeline,
+            current_program: pipeline.program.clone(),
+        });
 
-		// disable vertex attribs
-		for i in 0..pipeline.vertex_attributes.len() {
-			unsafe { self.gl.disable_vertex_attrib_array(i as _) }
-		}
+        // disable vertex attribs
+        for i in 0..pipeline.vertex_attributes.len() {
+            unsafe { self.gl.disable_vertex_attrib_array(i as _) }
+        }
     }
 
     /// Bind a buffer object to the array buffer binding point, `GL_ARRAY_BUFFER`.
@@ -138,20 +162,20 @@ impl ManagedContext {
     /// Set the viewport position & dimensions.
     pub fn set_viewport(&self, x: i32, y: i32, w: i32, h: i32) {
         unsafe { self.gl.viewport(x, y, w, h) };
-	}
+    }
 }
 
 pub struct Drawable<'a> {
     ctx: &'a mut ManagedContext,
-	pipeline: &'a RenderPipeline,
+    pipeline: &'a RenderPipeline,
     current_program: Arc<ShaderProgram>,
 }
 
 impl<'a> Drawable<'a> {
-	/// Set scissor rect
-	pub fn set_scissor(&self, x: i32, y: i32, w: i32, h: i32) {
-		unsafe { self.ctx.gl.scissor(x, y, w, h) }
-	}
+    /// Set scissor rect
+    pub fn set_scissor(&self, x: i32, y: i32, w: i32, h: i32) {
+        unsafe { self.ctx.gl.scissor(x, y, w, h) }
+    }
 
     /// Set a float4 uniform on the currently applied pipeline.
     pub fn set_uniform_float4(&self, name: &str, value: &[f32; 4]) {
@@ -197,7 +221,7 @@ impl<'a> Drawable<'a> {
         }
     }
 
-	/// Set a int4 uniform on the currently applied pipeline.
+    /// Set a int4 uniform on the currently applied pipeline.
     pub fn set_uniform_int4(&self, name: &str, value: &[i32; 4]) {
         unsafe {
             let program = self.current_program.program;
@@ -280,30 +304,42 @@ impl<'a> Drawable<'a> {
         }
     }
 
-	/// Bind vertex buffer(s) and index buffer.
-	pub fn apply_bindings(&self, vertex_buffers: &[impl BindableBuffer], index_buffer: Option<impl BindableBuffer>) {
-		// setup vaos
-		for (idx, attr) in self.pipeline.vertex_attributes.iter().enumerate() {
-			let buffer = &vertex_buffers[attr.buffer_index];
-			unsafe {
-				buffer.bind(ARRAY_BUFFER, &self.ctx.gl);
+    /// Bind vertex buffer(s) and index buffer.
+    pub fn apply_bindings(
+        &self,
+        vertex_buffers: &[impl BindableBuffer],
+        index_buffer: Option<impl BindableBuffer>,
+    ) {
+        // setup vaos
+        for (idx, attr) in self.pipeline.vertex_attributes.iter().enumerate() {
+            let buffer = &vertex_buffers[attr.buffer_index];
+            unsafe {
+                buffer.bind(ARRAY_BUFFER, &self.ctx.gl);
 
-				self.ctx.gl.vertex_attrib_pointer_f32(idx as _, attr.size, attr.data_type as _, attr.normalized, attr.stride, attr.offset);
-				self.ctx.gl.enable_vertex_attrib_array(idx as _);
-			}
-		}
+                self.ctx.gl.vertex_attrib_pointer_f32(
+                    idx as _,
+                    attr.size,
+                    attr.data_type as _,
+                    attr.normalized,
+                    attr.stride,
+                    attr.offset,
+                );
+                self.ctx.gl.enable_vertex_attrib_array(idx as _);
+            }
+        }
 
-		unsafe {
-			if let Some(index_buffer) = index_buffer {
-				index_buffer.bind(ELEMENT_ARRAY_BUFFER, &self.ctx.gl);
-			}
-		}
-	}
+        unsafe {
+            if let Some(index_buffer) = index_buffer {
+                index_buffer.bind(ELEMENT_ARRAY_BUFFER, &self.ctx.gl);
+            }
+        }
+    }
 
-	/// Render primitives using bound vertex data & index data.
+    /// Render primitives using bound vertex data & index data.
     pub fn draw_elements(&mut self, mode: DrawMode, count: u32, ty: DataType, offset: i32) {
         unsafe {
-            self.ctx.gl
+            self.ctx
+                .gl
                 .draw_elements(mode.to_gl(), count as i32, ty as u32, offset);
         }
     }
@@ -336,15 +372,10 @@ impl<'a> Drawable<'a> {
     }
 
     /// Render primitives using bound vertex data, with instancing.
-    pub fn draw_arrays_instanced(
-        &self,
-        mode: DrawMode,
-        first: i32,
-        count: i32,
-        instances: u32,
-    ) {
+    pub fn draw_arrays_instanced(&self, mode: DrawMode, first: i32, count: i32, instances: u32) {
         unsafe {
-            self.ctx.gl
+            self.ctx
+                .gl
                 .draw_arrays_instanced(mode.to_gl(), first as i32, count, instances as _);
         }
     }
