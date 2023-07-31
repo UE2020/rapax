@@ -1,5 +1,5 @@
 # rapax
-The #1 best safe OpenGL abstraction crate, providing RAII wrappers and a simpler Rusty interface. Read more to see why.
+The #1 best safe & stateless OpenGL abstraction crate, providing RAII wrappers and a simpler Rusty interface. Read more to see why.
 
 ## Problems with other abstraction crates (miniquad, glium, notan, etc.)
 
@@ -28,15 +28,35 @@ I have not looked into rafx too much, though two issues stick out:
 Rapax addresses these problems by making it very easy to access internal OpenGL state without meddling with too many internals. If Rapax doesn't have a feature you need (I guarantee this will almost never happen) it's easy to hack it in without touching any Rapax code.
 Using a foreign texture is as easy as:
 ```rs
-ctx.bind_texture(0, foreign_texture_name);
+ctx.apply_textures(&[
+	(foreign_texture_name, "uTexture"),
+]);
 ```
-All of Rapax's context functions take in Rapax's managed primitives in addition to raw OpenGL names/handles.
+All of Rapax's context functions take in Rapax's managed primitives in addition to raw OpenGL names/handles. This is controlled using the `Bindable*` series of traits.
 
 In the case of extensions such as `GLX_EXT_texture_from_pixmap` it's as easy as:
 ```rs
-gl.active_texture(glow::TEXTURE0);
-glXBindTexImageEXT(...);
-ctx.draw_elements(...);
-glXReleaseTexImageEXT(...);
+struct Pixmap(...);
+
+impl rapax::BindableTexture for Pixmap {
+	unsafe fn bind(&self) {
+		glXBindTexImageEXT(...);
+	}
+}
+
+impl Pixmap {
+	unsafe fn release(&self) {
+		glXReleaseTexImageEXT(...);
+	}
+}
+
+ctx.with_pipeline(&some_pipeline, |rctx| {
+	let foreign_texture_name = Pixmap(...);
+	rctx.apply_textures(&[
+		(foreign_texture_name, "uTexture"),
+	]);
+	rctx.draw_elements(rapax::DrawMode::Triangles, 100, DataType::UnsignedShort, 0);
+	unsafe { foreign_texture_name.release() };
+})
 ```
-Rapax does not cache any internal GL state, so there is no way to "break" the context by binding textures/programs/buffers manually.
+Rapax does not cache any internal GL state, so there is no way to put the context into an unusable state by binding textures/programs/buffers manually.
