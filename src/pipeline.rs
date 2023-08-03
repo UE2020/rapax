@@ -2,6 +2,7 @@ use crate::*;
 
 use std::sync::Arc;
 
+/// A stencil function.
 #[derive(Debug, Clone, PartialEq, Eq, Copy)]
 #[repr(u32)]
 pub enum StencilFunc {
@@ -15,19 +16,29 @@ pub enum StencilFunc {
     Always = ALWAYS,
 }
 
+/// A stencil operation.
 #[derive(Debug, Clone, PartialEq, Eq, Copy)]
 #[repr(u32)]
 pub enum StencilOp {
+    /// The currently stored stencil value is kept.
     Keep = KEEP,
+    /// The stencil value is set to 0.
     Zero = ZERO,
+    /// The stencil value is replaced with the reference value.
     Replace = REPLACE,
+    /// The stencil value is increased by 1 if it is lower than the maximum value.
     Increment = INCR,
+    /// Same as [`StencilOp::Increment`], but wraps it back to 0 as soon as the maximum value is exceeded.
     IncrementWrap = INCR_WRAP,
+    /// The stencil value is decreased by 1 if it is higher than the minimum value.
     Decrement = DECR,
+    /// Same as [`StencilOp::Decrement`], but wraps it to the maximum value if it ends up lower than 0.
     DecrementWrap = DECR_WRAP,
+    /// Bitwise inverts the current stencil buffer value.
     Invert = INVERT,
 }
 
+/// Vertex attribute descriptor.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub(crate) struct VertexAttributeDescriptor {
     pub(crate) buffer_index: usize,
@@ -40,6 +51,7 @@ pub(crate) struct VertexAttributeDescriptor {
     pub(crate) divisor: u32,
 }
 
+/// Stencil function state.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct StencilFuncState {
     pub mask: u32,
@@ -57,6 +69,7 @@ impl Default for StencilFuncState {
     }
 }
 
+/// Stencil state descriptor.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct StencilState {
     pub front_mask: u32,
@@ -103,7 +116,7 @@ pub struct RenderPipeline {
     pub(crate) depth_write: bool,
     pub(crate) color_write: [bool; 4],
 
-    // pipline program
+    // pipeline program
     pub(crate) program: Arc<ShaderProgram>,
 
     pub(crate) vertex_attributes: Vec<VertexAttributeDescriptor>,
@@ -202,6 +215,7 @@ impl RenderPipeline {
         &self.program
     }
 
+    /// Set the stencil state.
     pub fn with_stencil(self, stencil: Option<StencilState>) -> Self {
         Self {
             stencil_state: stencil,

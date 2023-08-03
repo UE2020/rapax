@@ -7,11 +7,14 @@ use std::sync::Arc;
 #[repr(u32)]
 pub enum DrawMode {
     /// Draws a triangle for a group of three vertices
-    Triangles = 0x4,
+    Triangles = TRIANGLES,
     /// Draws a line between a pair of vertices
-    Lines = 0x1,
+    Lines = LINES,
     /// Draws a single dot
-    Points = 0x0,
+    Points = POINTS,
+    /// Draws a strip of triangles. Every group of 3 adjacent vertices forms a triangle.
+    TriangleStrip = TRIANGLE_STRIP,
+	TriangleFan = TRIANGLE_FAN,
 }
 
 impl DrawMode {
@@ -35,8 +38,8 @@ impl ManagedContext {
         }
     }
 
-    /// Apply a rendering pipeline to the context. There must be a pipeline applied in order for the `set_uniform_*` series of functions to work.
-    pub fn with_pipeline<F: FnOnce(Drawable)>(&mut self, pipeline: &RenderPipeline, draw_cb: F) {
+    /// Create a scope in which the referenced pipeline is active.
+    pub fn with_pipeline(&mut self, pipeline: &RenderPipeline, draw_cb: impl FnOnce(Drawable)) {
         unsafe {
             if pipeline.blend_enabled {
                 self.gl.enable(BLEND);
@@ -146,8 +149,7 @@ impl ManagedContext {
         unsafe { buffer.bind(target, &self.gl) }
     }
 
-    /// Clear buffers.
-    /// Calling `flush_state` is highly advised before calling this function.
+    /// Clear specified buffers.
     pub fn clear(&self, mask: ClearFlags) {
         unsafe {
             self.gl.clear(mask.bits());
@@ -159,12 +161,23 @@ impl ManagedContext {
         unsafe { self.gl.clear_color(color[0], color[1], color[2], color[3]) };
     }
 
+    /// Set the depth clear value.
+    pub fn set_depth_clear(&self, value: f32) {
+        unsafe { self.gl.clear_depth_f32(value) };
+    }
+
+    /// Set the stencil clear value.
+    pub fn set_stencil_clear(&self, value: i32) {
+        unsafe { self.gl.clear_stencil(value) };
+    }
+
     /// Set the viewport position & dimensions.
     pub fn set_viewport(&self, x: i32, y: i32, w: i32, h: i32) {
         unsafe { self.gl.viewport(x, y, w, h) };
     }
 }
 
+/// A pipeline draw context.
 pub struct Drawable<'a> {
     ctx: &'a mut ManagedContext,
     pipeline: &'a RenderPipeline,
@@ -324,6 +337,7 @@ impl<'a> Drawable<'a> {
                     attr.stride,
                     attr.offset,
                 );
+				//self.ctx.gl.vertex_attrib_divisor(idx as _, attr.divisor);
                 self.ctx.gl.enable_vertex_attrib_array(idx as _);
             }
         }

@@ -7,7 +7,8 @@ edition = "2021"
 
 [dependencies]
 bitflags = "2.3.3"
-glow = "0.11.2"
+bytemuck = "1.13.1"
+glow = "0.12.3"
 
 [dev-dependencies]
 glutin = "0.29"

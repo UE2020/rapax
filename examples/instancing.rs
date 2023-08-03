@@ -11,7 +11,7 @@ fn main() {
     let (gl, window, event_loop) = unsafe {
         let event_loop = glutin::event_loop::EventLoop::new();
         let window_builder = glutin::window::WindowBuilder::new()
-            .with_title("Demo")
+            .with_title("Spiral Demo")
             .with_inner_size(glutin::dpi::LogicalSize::new(1024.0, 768.0));
         let window = glutin::ContextBuilder::new()
             .with_vsync(true)
