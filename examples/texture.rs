@@ -1,12 +1,13 @@
 use glutin::event::{Event, WindowEvent};
 use glutin::event_loop::ControlFlow;
+use image::io::Reader as ImageReader;
 use std::sync::Arc;
 
 fn main() {
     let (gl, window, event_loop) = unsafe {
         let event_loop = glutin::event_loop::EventLoop::new();
         let window_builder = glutin::window::WindowBuilder::new()
-            .with_title("Triangle Demo")
+            .with_title("Texture Demo")
             .with_inner_size(glutin::dpi::LogicalSize::new(1024.0, 768.0));
         let window = glutin::ContextBuilder::new()
             .with_vsync(true)
@@ -23,45 +24,76 @@ fn main() {
         &mut ctx,
         r#"#version 330 core
 
-layout (location = 0) in vec2 position;
+		layout (location = 0) in vec2 position;
+		layout (location = 1) in vec2 texcoord;
 
-out vec4 color;
+		out vec4 color;
+		out vec2 texcoord_out;
 
-void main()
-{
-	gl_Position = vec4(position, 0.0, 1.0);
-	color = vec4((position.x + 1.0) / 2.0, (position.y + 1.0) / 2.0, 0.5, 1.0);
-}
+		void main()
+		{
+			gl_Position = vec4(position, 0.0, 1.0);
+			color = vec4((position.x + 1.0) / 2.0, (position.y + 1.0) / 2.0, 0.5, 1.0);
+			texcoord_out = texcoord;
+		}
 		"#,
         r#"#version 330 core
 
-in vec4 color;
+		in vec4 color;
+		in vec2 texcoord_out;
+		out vec4 FragColor;
+		uniform sampler2D uTexture;
 
-out vec4 FragColor;
-
-void main()
-{
-	FragColor = color;
-}
+		void main()
+		{
+			FragColor = texture(uTexture, texcoord_out);
+		}
 "#,
     );
 
-    let pipeline = rapax::RenderPipeline::new(program).with_vertex_attribute(
-        0,
-        2,
-        rapax::DataType::Float,
-        false,
-        0,
-        0,
-        0,
-    );
-    let vertex_data: [f32; 6] = [0.0, 0.5, 0.5, -0.5, -0.5, -0.5];
+    let pipeline = rapax::RenderPipeline::new(program)
+        .with_vertex_attribute(
+            0,
+            2,
+            rapax::DataType::Float,
+            false,
+            4 * rapax::DataType::Float.sizeof() as i32,
+            0,
+            0,
+        )
+        .with_vertex_attribute(
+            0,
+            2,
+            rapax::DataType::Float,
+            false,
+            4 * rapax::DataType::Float.sizeof() as i32,
+            2 * rapax::DataType::Float.sizeof() as i32,
+            0,
+        );
+    #[rustfmt::skip]
+    let vertex_data: [f32; 16] = [
+		0.5,  0.5,  1.0, 1.0,   // top right
+    	 0.5, -0.5, 1.0, 0.0,   // bottom right
+    	-0.5, -0.5, 0.0, 0.0,   // bottom let
+    	-0.5,  0.5, 0.0, 1.0    // top let 
+	];
     let vertex_buffer = rapax::BufferHandle::array_buffer(
         &mut ctx,
         rapax::BufferUsage::Immutable,
         bytemuck::cast_slice(&vertex_data),
     )
     .unwrap();
+
+    let img = ImageReader::open("./examples/0001.jpg").unwrap().decode().unwrap();
+    let converted = img.into_rgb8();
+    let texture = rapax::texture::TextureHandle::new(
+        &mut ctx,
+        rapax::texture::TextureWrap::ClampToBorder,
+        rapax::texture::TextureWrap::ClampToBorder,
+        rapax::texture::TextureFilteringMode::Linear,
+        rapax::texture::TextureFilteringMode::Linear,
+    ).expect("failed to create texture");
+	let texture = texture.allocate_2d_data(&mut ctx, Some(converted.as_raw()), rapax::texture::TextureFormat::RGB, converted.width() as _, converted.height() as _, rapax::DataType::UnsignedByte);
 
     event_loop.run(move |event, _, control_flow| {
         *control_flow = ControlFlow::Poll;
@@ -77,6 +109,7 @@ void main()
 
                 ctx.with_pipeline(&pipeline, |dctx| {
                     dctx.apply_bindings(&[&vertex_buffer], None::<&rapax::BufferHandle>);
+					dctx.apply_textures(&[(&texture, "uTexture")]);
                     dctx.draw_arrays(rapax::DrawMode::Triangles, 0, 3);
                 });
                 window.swap_buffers().unwrap();

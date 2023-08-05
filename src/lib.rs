@@ -16,7 +16,7 @@ pub use pipeline::*;
 mod clearflags;
 pub use clearflags::*;
 
-mod texture;
-pub use texture::*;
+pub mod texture;
+use texture::*;
 
 use glow::*;

@@ -14,7 +14,7 @@ pub enum DrawMode {
     Points = POINTS,
     /// Draws a strip of triangles. Every group of 3 adjacent vertices forms a triangle.
     TriangleStrip = TRIANGLE_STRIP,
-	TriangleFan = TRIANGLE_FAN,
+    TriangleFan = TRIANGLE_FAN,
 }
 
 impl DrawMode {
@@ -118,35 +118,6 @@ impl ManagedContext {
         for i in 0..pipeline.vertex_attributes.len() {
             unsafe { self.gl.disable_vertex_attrib_array(i as _) }
         }
-    }
-
-    /// Bind a buffer object to the array buffer binding point, `GL_ARRAY_BUFFER`.
-    pub fn bind_array_buffer(&mut self, buffer: impl BindableBuffer) {
-        unsafe { buffer.bind(ARRAY_BUFFER, &self.gl) }
-    }
-
-    /// Unbind the currently bound buffer object from the array buffer binding point, `GL_ARRAY_BUFFER`.
-    pub fn unbind_array_buffer(&mut self) {
-        unsafe { self.gl.bind_buffer(ARRAY_BUFFER, None) };
-    }
-
-    /// Bind a buffer object to the index buffer binding point, `GL_ELEMENT_ARRAY_BUFFER`.
-    pub fn bind_index_buffer(&mut self, buffer: impl BindableBuffer) {
-        unsafe { buffer.bind(ELEMENT_ARRAY_BUFFER, &self.gl) }
-    }
-
-    /// Unbind the currently bound buffer object from the array buffer binding point, `GL_ELEMENT_ARRAY_BUFFER`.
-    pub fn unbind_index_buffer(&mut self) {
-        unsafe { self.gl.bind_buffer(ELEMENT_ARRAY_BUFFER, None) };
-    }
-
-    /// Bind a buffer object. The binding point will be determined using `BufferHandle::buffer_type`.
-    pub fn bind_any_buffer(&mut self, buffer: &BufferHandle) {
-        let target = match buffer.ty() {
-            BufferType::ArrayBuffer => ARRAY_BUFFER,
-            BufferType::ElementArrayBuffer => ELEMENT_ARRAY_BUFFER,
-        };
-        unsafe { buffer.bind(target, &self.gl) }
     }
 
     /// Clear specified buffers.
@@ -337,7 +308,7 @@ impl<'a> Drawable<'a> {
                     attr.stride,
                     attr.offset,
                 );
-				//self.ctx.gl.vertex_attrib_divisor(idx as _, attr.divisor);
+                //self.ctx.gl.vertex_attrib_divisor(idx as _, attr.divisor);
                 self.ctx.gl.enable_vertex_attrib_array(idx as _);
             }
         }
@@ -345,6 +316,17 @@ impl<'a> Drawable<'a> {
         unsafe {
             if let Some(index_buffer) = index_buffer {
                 index_buffer.bind(ELEMENT_ARRAY_BUFFER, &self.ctx.gl);
+            }
+        }
+    }
+
+    /// Bind textures and sets the corresponding uniform.
+    pub fn apply_textures(&self, textures: &[(&dyn BindableTexture, &str)]) {
+        for (unit, (texture, uniform_name)) in textures.iter().enumerate() {
+            unsafe {
+                self.ctx.gl.active_texture(TEXTURE0 + unit as u32);
+                texture.bind(texture.texture_target_hint(), &self.ctx.gl);
+                self.set_uniform_int1(uniform_name, unit as i32);
             }
         }
     }

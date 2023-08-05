@@ -11,7 +11,7 @@ fn main() {
     let (gl, window, event_loop) = unsafe {
         let event_loop = glutin::event_loop::EventLoop::new();
         let window_builder = glutin::window::WindowBuilder::new()
-            .with_title("Spiral Demo")
+            .with_title("Instancing Demo")
             .with_inner_size(glutin::dpi::LogicalSize::new(1024.0, 768.0));
         let window = glutin::ContextBuilder::new()
             .with_vsync(true)
@@ -36,19 +36,23 @@ fn main() {
             vec2(200.0f, 0.0f)
         );
         out vec2 vert;
+		out float instanceID;
         uniform mat4 uMVP;
         void main() {
             vert = verts[gl_VertexID];
-            gl_Position = uMVP * vec4(vert + vec2(gl_InstanceID * 50.0), 0.0, 1.0);
+			instanceID = gl_InstanceID;
+            gl_Position = uMVP * vec4(vert + vec2(gl_InstanceID * 100.0, 0.0), 0.0, 1.0);
         }"#,
         r#"#version 410
         precision mediump float;
         in vec2 vert;
+		in float instanceID;
         out vec4 color;
 
         uniform vec4 uColor;
         void main() {
-            color = uColor;
+			vec4 instanceColor = vec4(uColor.r / (instanceID + 1.0f), uColor.gba);
+            color = instanceColor;
         }"#,
     );
 
@@ -68,7 +72,7 @@ fn main() {
             Event::RedrawRequested(_) => {
                 let size = window.window().inner_size();
 
-                rotation += 0.01;
+                rotation += 0.1;
 
                 ctx.clear(rapax::ClearFlags::COLOR);
 
@@ -76,8 +80,11 @@ fn main() {
                     dctx.set_uniform_float4("uColor", &[1.0, 0.0, 0.2, 1.0]);
 
                     let view = ortho(0.0, size.width as f32, size.height as f32, 0.0, 0.0, 1.0);
-                    let model: Matrix4<f32> = Matrix4::from_translation(vec3(500.0, 500.0, 0.0))
-                        * Matrix4::from_angle_z(Rad(rotation));
+                    let model: Matrix4<f32> = Matrix4::from_translation(vec3(
+                        100.0,
+                        100.0 + (rotation.sin() * 10.0),
+                        0.0,
+                    ));
                     let mvp = view * model;
                     dctx.set_uniform_mat4("uMVP", &mvp.as_ref(), false);
 

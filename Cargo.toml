@@ -13,3 +13,4 @@ glow = "0.12.3"
 [dev-dependencies]
 glutin = "0.29"
 cgmath = "0.18.0"
+image = "0.24.6"

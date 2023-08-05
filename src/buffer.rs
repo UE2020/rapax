@@ -31,21 +31,36 @@ impl BufferUsage {
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 #[repr(u32)]
 pub enum DataType {
-    SignedByte = 0x1400,
-    UnsignedByte = 0x1401,
-    SignedShort = 0x1402,
-    UnsignedShort = 0x1403,
-    SignedInt = 0x1404,
-    UnsignedInt = 0x1405,
-    HalfFloat = 0x140b,
-    Float = 0x1406,
-    Double = 0x140a,
-    Fixed = 0x140c,
+    SignedByte = BYTE,
+    UnsignedByte = UNSIGNED_BYTE,
+    SignedShort = SHORT,
+    UnsignedShort = UNSIGNED_SHORT,
+    SignedInt = INT,
+    UnsignedInt = UNSIGNED_INT,
+    HalfFloat = HALF_FLOAT,
+    Float = FLOAT,
+    Double = DOUBLE,
+    Fixed = FIXED,
 }
 
 impl DataType {
     pub fn to_gl(&self) -> u32 {
         *self as u32
+    }
+
+    pub fn sizeof(&self) -> usize {
+        match *self {
+            Self::SignedByte => 1,
+            Self::UnsignedByte => 1,
+            Self::SignedShort => 2,
+            Self::UnsignedShort => 2,
+            Self::SignedInt => 4,
+            Self::UnsignedInt => 4,
+            Self::HalfFloat => 2,
+            Self::Float => 4,
+            Self::Double => 8,
+            Self::Fixed => 4,
+        }
     }
 }
 
@@ -61,7 +76,7 @@ pub struct BufferHandle {
 impl BufferHandle {
     /// Create an array buffer, filling it with the given data slice.
     pub fn array_buffer(
-        ctx: &mut ManagedContext,
+        ctx: &ManagedContext,
         usage: BufferUsage,
         data: &[u8],
     ) -> Result<Self, String> {
