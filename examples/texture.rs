@@ -101,16 +101,25 @@ fn main() {
     let texture = texture.allocate_2d_data(
         &mut ctx,
         Some(converted.as_raw()),
-		rapax::texture::InternalTextureFormat::Rgb,
+        rapax::texture::InternalTextureFormat::Rgb,
         rapax::texture::TextureFormat::Rgb,
         converted.width() as _,
         converted.height() as _,
         rapax::DataType::UnsignedByte,
     );
 
-	// test subimage
-	let data = [0u8; 100 * 100 * 3];
-	texture.write_subimage(&mut ctx, 500, 100, 100, 100, rapax::texture::TextureFormat::Rgb, rapax::DataType::UnsignedByte, &data);
+    // test subimage
+    let data = [0u8; 100 * 100 * 3];
+    texture.write_subimage(
+        &mut ctx,
+        500,
+        100,
+        100,
+        100,
+        rapax::texture::TextureFormat::Rgb,
+        rapax::DataType::UnsignedByte,
+        &data,
+    );
 
     event_loop.run(move |event, _, control_flow| {
         *control_flow = ControlFlow::Poll;

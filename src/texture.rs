@@ -50,20 +50,27 @@ pub enum InternalTextureFormat {
     Rgba16 = RGBA16,
 }
 
-
 /// Specifies a supported OpenGL texture format.
 ///
 /// The availability of texture formats depends on the platform being used.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 #[repr(u32)]
 pub enum TextureFormat {
+    /// Red channel format.
     Red = RED,
+    /// Green channel format.
     Green = GREEN,
+    /// Blue channel format.
     Blue = BLUE,
+    /// Alpha channel format.
     Alpha = ALPHA,
+    /// RGB format.
     Rgb = RGB,
+    /// RGBA format.
     Rgba = RGBA,
+    /// Luminance format.
     Luminance = LUMINANCE,
+    /// Luminance alpha format.
     LuminanceAlpha = LUMINANCE_ALPHA,
 }
 
@@ -139,7 +146,7 @@ impl TextureHandle {
         ctx: &mut ManagedContext,
         data: Option<&[u8]>,
         internal_format: InternalTextureFormat,
-		format: TextureFormat,
+        format: TextureFormat,
         width: i32,
         height: i32,
         ty: DataType,

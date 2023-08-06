@@ -14,16 +14,36 @@ impl Texture2D {
         }
     }
 
-	/// Upload a sub-image. 
-	/// 
-	/// Mipmaps should be regenerated after the texture is modified.
-	pub fn write_subimage(&self, ctx: &mut ManagedContext, x_offset: i32, y_offset: i32, width: i32, height: i32, format: TextureFormat, ty: DataType, data: &[u8]) {
-		unsafe {
-			ctx.gl.bind_texture(TEXTURE_2D, Some(self.0.texture));
-			ctx.gl.tex_sub_image_2d(TEXTURE_2D, 0, x_offset, y_offset, width, height, format as _, ty as _, PixelUnpackData::Slice(data));
-			ctx.gl.bind_texture(TEXTURE_2D, None);
-		}
-	}
+    /// Upload a sub-image.
+    ///
+    /// Mipmaps should be regenerated after the texture is modified.
+    pub fn write_subimage(
+        &self,
+        ctx: &mut ManagedContext,
+        x_offset: i32,
+        y_offset: i32,
+        width: i32,
+        height: i32,
+        format: TextureFormat,
+        ty: DataType,
+        data: &[u8],
+    ) {
+        unsafe {
+            ctx.gl.bind_texture(TEXTURE_2D, Some(self.0.texture));
+            ctx.gl.tex_sub_image_2d(
+                TEXTURE_2D,
+                0,
+                x_offset,
+                y_offset,
+                width,
+                height,
+                format as _,
+                ty as _,
+                PixelUnpackData::Slice(data),
+            );
+            ctx.gl.bind_texture(TEXTURE_2D, None);
+        }
+    }
 }
 
 impl BindableTexture for Texture2D {
