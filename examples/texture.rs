@@ -11,7 +11,6 @@ fn main() {
             .with_inner_size(glutin::dpi::LogicalSize::new(1024.0, 768.0));
         let window = glutin::ContextBuilder::new()
             .with_vsync(true)
-            //.with_multisampling(16)
             .build_windowed(window_builder, &event_loop)
             .unwrap()
             .make_current()
@@ -52,24 +51,25 @@ fn main() {
     );
 
     let pipeline = rapax::RenderPipeline::new(program)
-        .with_vertex_attribute(
-            0,
-            2,
-            rapax::DataType::Float,
-            false,
-            4 * rapax::DataType::Float.sizeof() as i32,
-            0,
-            0,
-        )
-        .with_vertex_attribute(
-            0,
-            2,
-            rapax::DataType::Float,
-            false,
-            4 * rapax::DataType::Float.sizeof() as i32,
-            2 * rapax::DataType::Float.sizeof() as i32,
-            0,
-        );
+        .with_vertex_attribute(rapax::VertexAttributeDescriptor {
+            buffer_index: 0,
+            size: 2,
+            ty: rapax::DataType::Float,
+            normalized: false,
+            stride: 4 * rapax::DataType::Float.sizeof() as i32,
+            offset: 0,
+            divisor: 0,
+        })
+        .with_vertex_attribute(rapax::VertexAttributeDescriptor {
+            buffer_index: 0,
+            size: 2,
+            ty: rapax::DataType::Float,
+            normalized: false,
+            stride: 4 * rapax::DataType::Float.sizeof() as i32,
+            offset: 2 * rapax::DataType::Float.sizeof() as i32,
+            divisor: 0,
+        });
+
     #[rustfmt::skip]
     let vertex_data: [f32; 16] = [
 		0.5,  0.5,  1.0, 1.0,   // top right
@@ -84,7 +84,10 @@ fn main() {
     )
     .unwrap();
 
-    let img = ImageReader::open("./examples/0001.jpg").unwrap().decode().unwrap();
+    let img = ImageReader::open("./examples/0001.jpg")
+        .unwrap()
+        .decode()
+        .unwrap();
     let converted = img.into_rgb8();
     let texture = rapax::texture::TextureHandle::new(
         &mut ctx,
@@ -92,8 +95,22 @@ fn main() {
         rapax::texture::TextureWrap::ClampToBorder,
         rapax::texture::TextureFilteringMode::Linear,
         rapax::texture::TextureFilteringMode::Linear,
-    ).expect("failed to create texture");
-	let texture = texture.allocate_2d_data(&mut ctx, Some(converted.as_raw()), rapax::texture::TextureFormat::RGB, converted.width() as _, converted.height() as _, rapax::DataType::UnsignedByte);
+    )
+    .expect("failed to create texture");
+
+    let texture = texture.allocate_2d_data(
+        &mut ctx,
+        Some(converted.as_raw()),
+		rapax::texture::InternalTextureFormat::Rgb,
+        rapax::texture::TextureFormat::Rgb,
+        converted.width() as _,
+        converted.height() as _,
+        rapax::DataType::UnsignedByte,
+    );
+
+	// test subimage
+	let data = [0u8; 100 * 100 * 3];
+	texture.write_subimage(&mut ctx, 500, 100, 100, 100, rapax::texture::TextureFormat::Rgb, rapax::DataType::UnsignedByte, &data);
 
     event_loop.run(move |event, _, control_flow| {
         *control_flow = ControlFlow::Poll;
@@ -109,7 +126,7 @@ fn main() {
 
                 ctx.with_pipeline(&pipeline, |dctx| {
                     dctx.apply_bindings(&[&vertex_buffer], None::<&rapax::BufferHandle>);
-					dctx.apply_textures(&[(&texture, "uTexture")]);
+                    dctx.apply_textures(&[(&texture, "uTexture")]);
                     dctx.draw_arrays(rapax::DrawMode::Triangles, 0, 3);
                 });
                 window.swap_buffers().unwrap();

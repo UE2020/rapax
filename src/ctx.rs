@@ -39,7 +39,7 @@ impl ManagedContext {
     }
 
     /// Create a scope in which the referenced pipeline is active.
-    pub fn with_pipeline(&mut self, pipeline: &RenderPipeline, draw_cb: impl FnOnce(Drawable)) {
+    pub fn with_pipeline(&mut self, pipeline: &RenderPipeline, draw_cb: impl FnOnce(&mut Drawable)) {
         unsafe {
             if pipeline.blend_enabled {
                 self.gl.enable(BLEND);
@@ -108,10 +108,11 @@ impl ManagedContext {
             }
         }
 
-        draw_cb(Drawable {
+        draw_cb(&mut Drawable {
             ctx: self,
             pipeline,
             current_program: pipeline.program.clone(),
+			vertices_applied: false,
         });
 
         // disable vertex attribs
@@ -153,6 +154,7 @@ pub struct Drawable<'a> {
     ctx: &'a mut ManagedContext,
     pipeline: &'a RenderPipeline,
     current_program: Arc<ShaderProgram>,
+	vertices_applied: bool,
 }
 
 impl<'a> Drawable<'a> {
@@ -290,10 +292,11 @@ impl<'a> Drawable<'a> {
 
     /// Bind vertex buffer(s) and index buffer.
     pub fn apply_bindings(
-        &self,
+        &mut self,
         vertex_buffers: &[impl BindableBuffer],
         index_buffer: Option<impl BindableBuffer>,
     ) {
+		self.vertices_applied = true;
         // setup vaos
         for (idx, attr) in self.pipeline.vertex_attributes.iter().enumerate() {
             let buffer = &vertex_buffers[attr.buffer_index];
@@ -303,7 +306,7 @@ impl<'a> Drawable<'a> {
                 self.ctx.gl.vertex_attrib_pointer_f32(
                     idx as _,
                     attr.size,
-                    attr.data_type as _,
+                    attr.ty as _,
                     attr.normalized,
                     attr.stride,
                     attr.offset,
@@ -333,6 +336,7 @@ impl<'a> Drawable<'a> {
 
     /// Render primitives using bound vertex data & index data.
     pub fn draw_elements(&mut self, mode: DrawMode, count: u32, ty: DataType, offset: i32) {
+		assert!(self.vertices_applied, "no buffers were applied");
         unsafe {
             self.ctx
                 .gl
@@ -349,6 +353,7 @@ impl<'a> Drawable<'a> {
         offset: i32,
         instances: u32,
     ) {
+		assert!(self.vertices_applied, "no buffers were applied");
         unsafe {
             self.ctx.gl.draw_elements_instanced(
                 mode.to_gl(),
@@ -360,8 +365,9 @@ impl<'a> Drawable<'a> {
         }
     }
 
-    /// Render primitives using bound vertex data.
+    /// Render primitives using previously applied vertex and texture data.
     pub fn draw_arrays(&self, mode: DrawMode, first: i32, count: i32) {
+		assert!(self.vertices_applied, "no buffers were applied");
         unsafe {
             self.ctx.gl.draw_arrays(mode.to_gl(), first as i32, count);
         }
@@ -369,6 +375,7 @@ impl<'a> Drawable<'a> {
 
     /// Render primitives using bound vertex data, with instancing.
     pub fn draw_arrays_instanced(&self, mode: DrawMode, first: i32, count: i32, instances: u32) {
+		assert!(self.vertices_applied, "no buffers were applied");
         unsafe {
             self.ctx
                 .gl

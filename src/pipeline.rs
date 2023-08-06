@@ -40,15 +40,14 @@ pub enum StencilOp {
 
 /// Vertex attribute descriptor.
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub(crate) struct VertexAttributeDescriptor {
-    pub(crate) buffer_index: usize,
-    pub(crate) size: i32,
-    pub(crate) data_type: DataType,
-    pub(crate) normalized: bool,
-    pub(crate) stride: i32,
-    pub(crate) offset: i32,
-
-    pub(crate) divisor: u32,
+pub struct VertexAttributeDescriptor {
+    pub buffer_index: usize,
+    pub size: i32,
+    pub ty: DataType,
+    pub normalized: bool,
+    pub stride: i32,
+    pub offset: i32,
+    pub divisor: u32,
 }
 
 /// Stencil function state.
@@ -143,26 +142,9 @@ impl RenderPipeline {
     }
 
     /// Add a vertex attribute to the pipeline.
-    pub fn with_vertex_attribute(
-        self,
-        buffer_index: usize,
-        size: i32,
-        data_type: DataType,
-        normalized: bool,
-        stride: i32,
-        offset: i32,
-        divisor: u32,
-    ) -> Self {
+    pub fn with_vertex_attribute(self, attr: VertexAttributeDescriptor) -> Self {
         let mut vertex_attributes = self.vertex_attributes;
-        vertex_attributes.push(VertexAttributeDescriptor {
-            buffer_index,
-            size,
-            data_type,
-            normalized,
-            stride,
-            offset,
-            divisor,
-        });
+        vertex_attributes.push(attr);
 
         Self {
             vertex_attributes,

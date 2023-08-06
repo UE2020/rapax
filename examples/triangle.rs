@@ -47,14 +47,17 @@ void main()
     );
 
     let pipeline = rapax::RenderPipeline::new(program).with_vertex_attribute(
-        0,
-        2,
-        rapax::DataType::Float,
-        false,
-        0,
-        0,
-        0,
+        rapax::VertexAttributeDescriptor {
+            buffer_index: 0,
+            size: 2,
+            ty: rapax::DataType::Float,
+            normalized: false,
+            stride: 0,
+            offset: 0,
+            divisor: 0,
+        },
     );
+
     let vertex_data: [f32; 6] = [0.0, 0.5, 0.5, -0.5, -0.5, -0.5];
     let vertex_buffer = rapax::BufferHandle::array_buffer(
         &mut ctx,

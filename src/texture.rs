@@ -1,43 +1,70 @@
 use super::*;
 use std::sync::Arc;
 
-/// Specifies an OpenGL texture format.
+mod tex_2d;
+pub use tex_2d::*;
+
+/// Specifies an internal OpenGL texture format.
+///
+/// The availability of texture formats depends on the platform being used.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[repr(u32)]
+pub enum InternalTextureFormat {
+    /// Alpha format.
+    Alpha = ALPHA,
+    /// Luminance format.
+    Luminance = LUMINANCE,
+    /// Luminance alpha format.
+    LuminanceAlpha = LUMINANCE_ALPHA,
+    /// 3-bit red, 3-bit green, 2-bit blue format.
+    R3G3B2 = R3_G3_B2,
+    /// RGB format.
+    Rgb = RGB,
+    /// 4-bit RGB format.
+    Rgb4 = RGB4,
+    /// 5-bit RGB format.
+    Rgb5 = RGB5,
+    /// 8-bit RGB format.
+    Rgb8 = RGB8,
+    /// 10-bit RGB format.
+    Rgb10 = RGB10,
+    /// 12-bit RGB format.
+    Rgb12 = RGB12,
+    /// 16-bit RGB format.
+    Rgb16 = RGB16,
+    /// RGBA format.
+    Rgba = RGBA,
+    /// 2-bit RGBA format.
+    Rgba2 = RGBA2,
+    /// 4-bit RGBA format.
+    Rgba4 = RGBA4,
+    /// 5-bit RGB format with 1-bit alpha.
+    Rgb5A1 = RGB5_A1,
+    /// 8-bit RGBA format.
+    Rgba8 = RGBA8,
+    /// 10-bit RGB format with 2-bit alpha.
+    Rgb10A2 = RGB10_A2,
+    /// 12-bit RGBA format.
+    Rgba12 = RGBA12,
+    /// 16-bit RGBA format.
+    Rgba16 = RGBA16,
+}
+
+
+/// Specifies a supported OpenGL texture format.
 ///
 /// The availability of texture formats depends on the platform being used.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 #[repr(u32)]
 pub enum TextureFormat {
-    /// Three-component format with 8 bits per component (24 bits total).
-    RGB = RGB,
-    /// Four-component format with 8 bits per component (32 bits total).
-    RGBA = RGBA,
-    /// Three-component format with 5 bits for red, 6 bits for green, and 5 bits for blue (16 bits total).
-    RGB565 = RGB565,
-    /// Four-component format with 4 bits per component (16 bits total).
-    RGBA4444 = RGBA4,
-    /// Four-component format with 5 bits for red, 5 bits for green, 5 bits for blue, and 1 bit for alpha (16 bits total).
-    RGBA5551 = RGB5_A1,
-    /// Four-component format with 8 bits per component (32 bits total).
-    RGBA8888 = RGBA8,
-    /// Four-component format with 10 bits for red, 10 bits for green, 10 bits for blue, and 2 bits for alpha (32 bits total).
-    #[allow(non_camel_case_types)]
-    RGB10_A2 = RGB10_A2,
-    /// Single-component format with 8 bits (usually used for grayscale textures).
-    R8 = R8,
-    /// Single-component format with 16 bits.
-    R16 = R16,
-    /// Two-component format with 8 bits per component (16 bits total).
-    RG8 = RG8,
-    /// Two-component format with 16 bits per component (32 bits total).
-    RG16 = RG16,
-    /// Four-component format with 32-bit floating-point precision per component (128 bits total).
-    RGBA32F = RGBA32F,
-    /// Four-component format with 16-bit floating-point precision per component (64 bits total).
-    RGBA16F = RGBA16F,
-    /// Single-component format used for depth textures.
-    DepthComponent = DEPTH_COMPONENT,
-    /// Two-component format combining depth and stencil information.
-    DepthStencil = DEPTH24_STENCIL8,
+    Red = RED,
+    Green = GREEN,
+    Blue = BLUE,
+    Alpha = ALPHA,
+    Rgb = RGB,
+    Rgba = RGBA,
+    Luminance = LUMINANCE,
+    LuminanceAlpha = LUMINANCE_ALPHA,
 }
 
 /// Specifies the wrapping behavior of an axis of a texture.
@@ -111,7 +138,8 @@ impl TextureHandle {
         self,
         ctx: &mut ManagedContext,
         data: Option<&[u8]>,
-        format: TextureFormat,
+        internal_format: InternalTextureFormat,
+		format: TextureFormat,
         width: i32,
         height: i32,
         ty: DataType,
@@ -121,7 +149,7 @@ impl TextureHandle {
             ctx.gl.tex_image_2d(
                 TEXTURE_2D,
                 0,
-                format as _,
+                internal_format as _,
                 width,
                 height,
                 0,
@@ -134,10 +162,6 @@ impl TextureHandle {
         }
     }
 }
-
-/// A 2D texture in GPU memory.
-#[derive(Debug)]
-pub struct Texture2D(TextureHandle);
 
 /// A wrapper around a native OpenGL texture.
 #[derive(Debug)]
@@ -159,27 +183,6 @@ impl BindableTexture for &BindableNativeTexture {
 
     fn texture_target_hint(&self) -> u32 {
         self.target
-    }
-}
-
-impl Texture2D {
-    /// Generate texture mipmaps, should be called when texture data changes.
-    pub fn generate_mipmaps(&self, ctx: &mut ManagedContext) {
-        unsafe {
-            ctx.gl.bind_texture(TEXTURE_2D, Some(self.0.texture));
-            ctx.gl.generate_mipmap(TEXTURE_2D);
-            ctx.gl.bind_texture(TEXTURE_2D, None);
-        }
-    }
-}
-
-impl BindableTexture for Texture2D {
-    unsafe fn bind(&self, target: u32, gl: &Context) {
-        gl.bind_texture(target, Some(self.0.texture));
-    }
-
-    fn texture_target_hint(&self) -> u32 {
-        TEXTURE_2D
     }
 }
 
