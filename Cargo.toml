@@ -8,9 +8,11 @@ edition = "2021"
 [dependencies]
 bitflags = "2.3.3"
 bytemuck = "1.13.1"
-glow = "0.12.3"
+glow = "0.13.1"
 
 [dev-dependencies]
 glutin = "0.29"
 cgmath = "0.18.0"
 image = "0.24.6"
+cosmic-text = "0.10.0"
+clipboard = "0.5.0"

@@ -44,6 +44,34 @@ impl Texture2D {
             ctx.gl.bind_texture(TEXTURE_2D, None);
         }
     }
+
+    /// Reallocate 2D texture data and receive a [`Texture2D`] instance.
+    pub fn reallocate_2d_data(
+        &mut self,
+        ctx: &mut ManagedContext,
+        data: Option<&[u8]>,
+        internal_format: InternalTextureFormat,
+        format: TextureFormat,
+        width: i32,
+        height: i32,
+        ty: DataType,
+    ) {
+        unsafe {
+            ctx.gl.bind_texture(TEXTURE_2D, Some(self.0.texture));
+            ctx.gl.tex_image_2d(
+                TEXTURE_2D,
+                0,
+                internal_format as _,
+                width,
+                height,
+                0,
+                format as _,
+                ty as _,
+                data,
+            );
+            ctx.gl.bind_texture(TEXTURE_2D, None);
+        }
+    }
 }
 
 impl BindableTexture for Texture2D {

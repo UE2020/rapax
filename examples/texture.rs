@@ -121,6 +121,8 @@ fn main() {
         &data,
     );
 
+    texture.generate_mipmaps(&mut ctx);
+
     event_loop.run(move |event, _, control_flow| {
         *control_flow = ControlFlow::Poll;
         match event {

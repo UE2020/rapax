@@ -23,46 +23,76 @@ fn main() {
         &mut ctx,
         r#"#version 330 core
 
-layout (location = 0) in vec2 position;
+		layout (location = 0) in vec2 position;
+		layout (location = 1) in vec2 texcoord;
 
-out vec4 color;
+		out vec2 texcoord_out;
 
-void main()
-{
-	gl_Position = vec4(position, 0.0, 1.0);
-	color = vec4((position.x + 1.0) / 2.0, (position.y + 1.0) / 2.0, 0.5, 1.0);
-}
+		void main()
+		{
+			gl_Position = vec4(position, 0.0, 1.0);
+			texcoord_out = texcoord;
+		}
 		"#,
         r#"#version 330 core
 
-in vec4 color;
+		in vec2 texcoord_out;
+		out vec4 FragColor;
+		uniform sampler2D uTexture;
 
-out vec4 FragColor;
-
-void main()
-{
-	FragColor = color;
-}
+		void main()
+		{
+			//FragColor = texture(uTexture, texcoord_out);
+            FragColor = vec4(1.0, 1.0, 1.0, 1.0);
+		}
 "#,
     );
 
-    let pipeline = rapax::RenderPipeline::new(program).with_vertex_attribute(
-        rapax::VertexAttributeDescriptor {
+    let pipeline = rapax::RenderPipeline::new(program)
+        .with_vertex_attribute(rapax::VertexAttributeDescriptor {
             buffer_index: 0,
             size: 2,
             ty: rapax::DataType::Float,
             normalized: false,
-            stride: 0,
+            stride: 4 * rapax::DataType::Float.sizeof() as i32,
             offset: 0,
             divisor: 0,
-        },
-    );
+        })
+        .with_vertex_attribute(rapax::VertexAttributeDescriptor {
+            buffer_index: 0,
+            size: 2,
+            ty: rapax::DataType::Float,
+            normalized: false,
+            stride: 4 * rapax::DataType::Float.sizeof() as i32,
+            offset: 2 * rapax::DataType::Float.sizeof() as i32,
+            divisor: 0,
+        });
 
-    let vertex_data: [f32; 6] = [0.0, 0.5, 0.5, -0.5, -0.5, -0.5];
+    #[rustfmt::skip]
+    let vertex_data: [f32; 16] = [
+        0.0,  0.0,  0.0, 0.0,   // top left
+        1.0, 0.0, 1.0, 0.0,   // top right
+        0.0, 1.0, 0.0, 1.0,   // bottom left
+        1.0,  1.0, 1.0, 1.0    // bottom right
+    ];
+
+    #[rustfmt::skip]
+    let index_data: [u16; 6] = [
+        0, 1, 2,
+        2, 3, 1
+    ];
+
     let vertex_buffer = rapax::BufferHandle::array_buffer(
         &mut ctx,
         rapax::BufferUsage::Immutable,
         bytemuck::cast_slice(&vertex_data),
+    )
+    .unwrap();
+
+    let index_buffer = rapax::BufferHandle::index_buffer(
+        &mut ctx,
+        rapax::BufferUsage::Immutable,
+        bytemuck::cast_slice(&index_data),
     )
     .unwrap();
 
@@ -79,8 +109,14 @@ void main()
                 ctx.clear(rapax::ClearFlags::COLOR);
 
                 ctx.with_pipeline(&pipeline, |dctx| {
-                    dctx.apply_bindings(&[&vertex_buffer], None::<&rapax::BufferHandle>);
-                    dctx.draw_arrays(rapax::DrawMode::Triangles, 0, 3);
+                    dctx.apply_bindings(&[&vertex_buffer], Some(&index_buffer));
+                    //dctx.apply_textures(&[(&texture, "uTexture")]);
+                    dctx.draw_elements(
+                        rapax::DrawMode::Triangles,
+                        index_data.len() as _,
+                        rapax::DataType::UnsignedShort,
+                        0,
+                    );
                 });
                 window.swap_buffers().unwrap();
             }

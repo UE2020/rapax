@@ -17,6 +17,6 @@ mod clearflags;
 pub use clearflags::*;
 
 pub mod texture;
-use texture::*;
+pub use texture::*;
 
 use glow::*;

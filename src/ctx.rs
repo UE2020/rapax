@@ -117,6 +117,7 @@ impl ManagedContext {
             pipeline,
             current_program: pipeline.program.clone(),
             vertices_applied: false,
+            has_index_buffer: false,
         });
 
         // disable vertex attribs
@@ -159,6 +160,7 @@ pub struct Drawable<'a> {
     pipeline: &'a RenderPipeline,
     current_program: Arc<ShaderProgram>,
     vertices_applied: bool,
+    has_index_buffer: bool,
 }
 
 impl<'a> Drawable<'a> {
@@ -323,6 +325,7 @@ impl<'a> Drawable<'a> {
         unsafe {
             if let Some(index_buffer) = index_buffer {
                 index_buffer.bind(ELEMENT_ARRAY_BUFFER, &self.ctx.gl);
+                self.has_index_buffer = true;
             }
         }
     }
@@ -341,6 +344,7 @@ impl<'a> Drawable<'a> {
     /// Render primitives using bound vertex data & index data.
     pub fn draw_elements(&mut self, mode: DrawMode, count: u32, ty: DataType, offset: i32) {
         assert!(self.vertices_applied, "no buffers were applied");
+        assert!(self.has_index_buffer, "no index buffer was applied");
         unsafe {
             self.ctx
                 .gl
